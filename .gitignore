@@ -1,1 +1,48 @@
+# AtlasGuard Ignore list
+
+# Specs
 AtlasGuard_SRS_Project_Bible.md
+
+# Dependencies
+node_modules/
+jspm_packages/
+web_modules/
+
+# Next.js build output
+.next/
+out/
+
+# NestJS build output
+dist/
+
+# Local databases
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+
+# Env files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE/System files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Agents workspace (Teamwork logs/configs)
+.agents/
+ORIGINAL_REQUEST.md
+PROJECT.md
+TEST_INFRA.md
+TEST_READY.md
+
+# Playwright Test Outputs
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/

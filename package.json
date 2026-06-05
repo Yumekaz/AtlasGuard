@@ -1,0 +1,23 @@
+{
+  "name": "atlasguard-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AtlasGuard Tourist Safety & Incident Response Monorepo",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build:shared": "npm run build -w @atlasguard/shared",
+    "build:api": "npm run build -w @atlasguard/api",
+    "build:web": "npm run build -w @atlasguard/web",
+    "build:all": "npm run build:shared && npm run build:api && npm run build:web",
+    "dev:shared": "npm run dev -w @atlasguard/shared",
+    "dev:api": "npm run dev -w @atlasguard/api",
+    "dev:web": "npm run dev -w @atlasguard/web",
+    "install:all": "npm install"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  }
+}

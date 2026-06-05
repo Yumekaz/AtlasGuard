@@ -1,0 +1,241 @@
+// apps/api/prisma/schema.prisma
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ----------------------------------------------------
+// 1. User Account
+// ----------------------------------------------------
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  role         String   // "TOURIST" | "OPERATOR" | "RESPONDER" | "ADMIN"
+  status       String   @default("ACTIVE") // "ACTIVE" | "SUSPENDED"
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  touristProfile      TouristProfile?
+  responderProfile    ResponderProfile?
+  createdRiskZones    RiskZone[]            @relation("ZoneCreator")
+  incidentEvents      IncidentEvent[]
+  assignedAssignments ResponderAssignment[] @relation("AssignedBy")
+  uploadedEvidence    EvidenceFile[]
+  notifications       Notification[]
+  auditLogs           AuditLog[]
+
+  @@map("users")
+}
+
+// ----------------------------------------------------
+// 2. Tourist Safety Profile
+// ----------------------------------------------------
+model TouristProfile {
+  id                    String   @id @default(uuid())
+  userId                String   @unique @map("user_id")
+  phone                 String
+  emergencyContactName  String?  @map("emergency_contact_name")
+  emergencyContactPhone String?  @map("emergency_contact_phone")
+  medicalNotes          String?  @map("medical_notes")
+  mobilityNeeds         String?  @map("mobility_needs")
+  languagePreference    String?  @map("language_preference")
+  createdAt             DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trips     Trip[]
+  incidents Incident[]
+
+  @@map("tourist_profiles")
+}
+
+// ----------------------------------------------------
+// 3. Active Trips/Sessions
+// ----------------------------------------------------
+model Trip {
+  id              String         @id @default(uuid())
+  touristId       String         @map("tourist_id")
+  destinationName String         @map("destination_name")
+  startDate       DateTime       @map("start_date")
+  endDate         DateTime       @map("end_date")
+  safetyId        String         @map("safety_id") // Generated temporary ID
+  status          String         @default("ACTIVE") // "ACTIVE" | "COMPLETED" | "CANCELLED"
+  createdAt       DateTime       @default(now()) @map("created_at")
+
+  // Relations
+  tourist   TouristProfile @relation(fields: [touristId], references: [id], onDelete: Cascade)
+  incidents Incident[]
+
+  @@map("trips")
+}
+
+// ----------------------------------------------------
+// 4. Risk Zones
+// ----------------------------------------------------
+model RiskZone {
+  id          String   @id @default(uuid())
+  name        String
+  description String
+  riskLevel   String   @map("risk_level") // "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"
+  polygon     String   // GeoJSON or WKT string representing the geometry
+  active      Boolean  @default(true)
+  createdBy   String   @map("created_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relations
+  creator User @relation("ZoneCreator", fields: [createdBy], references: [id])
+
+  @@map("risk_zones")
+}
+
+// ----------------------------------------------------
+// 5. Emergency SOS / Incidents
+// ----------------------------------------------------
+model Incident {
+  id              String   @id @default(uuid())
+  touristId       String   @map("tourist_id")
+  tripId          String?  @map("trip_id")
+  type            String   // "SOS" | "GEOFENCE_BREACH" | "MEDICAL" | "LOST" | "HARASSMENT" | "OTHER"
+  status          String   @default("CREATED") // "CREATED" | "ACKNOWLEDGED" | "ASSIGNED" | "DISPATCHED" | "REACHED" | "RESOLVED" | "CANCELLED"
+  severity        String   @default("LOW") // "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"
+  latitude        Float
+  longitude       Float
+  riskScore       Int      @default(0) @map("risk_score")
+  riskExplanation String?  @map("risk_explanation") // Stringified JSON explanation
+  description     String?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  tourist       TouristProfile        @relation(fields: [touristId], references: [id], onDelete: Cascade)
+  trip          Trip?                 @relation(fields: [tripId], references: [id], onDelete: SetNull)
+  events        IncidentEvent[]
+  assignments   ResponderAssignment[]
+  evidenceFiles EvidenceFile[]
+  notifications Notification[]
+
+  @@map("incidents")
+}
+
+// ----------------------------------------------------
+// 6. Incident Events (Tamper-evident Audit Ledger)
+// ----------------------------------------------------
+model IncidentEvent {
+  id           String   @id @default(uuid())
+  incidentId   String   @map("incident_id")
+  actorId      String   @map("actor_id")
+  eventType    String   @map("event_type") // "SOS_TRIGGERED" | "ACKNOWLEDGED" | "ASSIGNED" | "DISPATCHED" | "REACHED" | "RESOLVED" | "CANCELLED" | "NOTE_ADDED"
+  metadata     String?  // Stringified JSON metadata details
+  previousHash String   @map("previous_hash")
+  currentHash  String   @map("current_hash")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  // Relations
+  incident Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  actor    User     @relation(fields: [actorId], references: [id])
+
+  @@map("incident_events")
+}
+
+// ----------------------------------------------------
+// 7. Responder Profile
+// ----------------------------------------------------
+model ResponderProfile {
+  id                 String   @id @default(uuid())
+  userId             String   @unique @map("user_id")
+  phone              String
+  unitName           String   @map("unit_name")
+  availabilityStatus String   @default("AVAILABLE") @map("availability_status") // "AVAILABLE" | "BUSY" | "OFFLINE"
+  lastLatitude       Float?   @map("last_latitude")
+  lastLongitude      Float?   @map("last_longitude")
+
+  // Relations
+  user        User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assignments ResponderAssignment[]
+
+  @@map("responders")
+}
+
+// ----------------------------------------------------
+// 8. Responder Assignments
+// ----------------------------------------------------
+model ResponderAssignment {
+  id           String    @id @default(uuid())
+  incidentId   String    @map("incident_id")
+  responderId  String    @map("responder_id")
+  assignedById String    @map("assigned_by_id")
+  status       String    @default("ASSIGNED") // "ASSIGNED" | "ACCEPTED" | "COMPLETED" | "CANCELLED"
+  assignedAt   DateTime  @default(now()) @map("assigned_at")
+  completedAt  DateTime? @map("completed_at")
+
+  // Relations
+  incident   Incident         @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  responder  ResponderProfile @relation(fields: [responderId], references: [id], onDelete: Cascade)
+  assignedBy User             @relation("AssignedBy", fields: [assignedById], references: [id])
+
+  @@map("responder_assignments")
+}
+
+// ----------------------------------------------------
+// 9. Evidence Files
+// ----------------------------------------------------
+model EvidenceFile {
+  id           String   @id @default(uuid())
+  incidentId   String   @map("incident_id")
+  uploadedById String   @map("uploaded_by_id")
+  fileUrl      String   @map("file_url")
+  fileType     String   @map("file_type") // "image" | "audio" | "text"
+  description  String?
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  // Relations
+  incident   Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  uploadedBy User     @relation(fields: [uploadedById], references: [id])
+
+  @@map("evidence_files")
+}
+
+// ----------------------------------------------------
+// 10. Notifications
+// ----------------------------------------------------
+model Notification {
+  id         String    @id @default(uuid())
+  userId     String    @map("user_id")
+  incidentId String?   @map("incident_id")
+  channel    String    // "IN_APP" | "EMAIL" | "SMS" | "PUSH"
+  status     String    @default("PENDING") // "PENDING" | "SENT" | "FAILED" | "MOCKED"
+  payload    String    // Stringified JSON
+  attempts   Int       @default(0)
+  createdAt  DateTime  @default(now()) @map("created_at")
+  sentAt     DateTime? @map("sent_at")
+
+  // Relations
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  incident Incident? @relation(fields: [incidentId], references: [id], onDelete: SetNull)
+
+  @@map("notifications")
+}
+
+// ----------------------------------------------------
+// 11. Generic Audit Log (Main Entities 14.1)
+// ----------------------------------------------------
+model AuditLog {
+  id        String   @id @default(uuid())
+  action    String   // e.g. "USER_LOGIN", "USER_CREATE"
+  actorId   String?  @map("actor_id")
+  metadata  String?  // Stringified JSON
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@map("audit_logs")
+}
