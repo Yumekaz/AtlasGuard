@@ -41,3 +41,42 @@ export interface LoginResponse {
   };
   token: string;
 }
+
+export interface TouristProfile {
+  id: string;
+  userId: string;
+  phone: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  medicalNotes?: string;
+  mobilityNeeds?: string;
+  languagePreference?: string;
+  createdAt: string;
+}
+
+export interface CreateTouristProfileDto {
+  phone: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  medicalNotes?: string;
+  mobilityNeeds?: string;
+  languagePreference?: string;
+}
+
+export interface Trip {
+  id: string;
+  touristId: string;
+  destinationName: string;
+  startDate: string;
+  endDate: string;
+  safetyId: string;
+  status: 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
+  createdAt: string;
+}
+
+export interface CreateTripDto {
+  destinationName: string;
+  startDate: string;
+  endDate: string;
+}
+
