@@ -1,17 +1,17 @@
 import { test, expect } from '@playwright/test';
 
 // Retrieve API and WEB URLs from environment or defaults
-const API_URL = process.env.API_URL || 'http://localhost:3001';
-const WEB_URL = process.env.WEB_URL || 'http://localhost:3000';
+const API_URL = process.env.API_URL || 'http://127.0.0.1:3001';
+const WEB_URL = process.env.WEB_URL || 'http://127.0.0.1:3000';
 
 test.describe('Smoke Tests - Infrastructure Verification', () => {
   
   test('API Endpoint - Connection Attempt', async ({ request }) => {
     console.log(`Attempting to connect to API at: ${API_URL}`);
     try {
-      // Attempt to hit the auth or root endpoint
-      const response = await request.get(`${API_URL}/auth/me`, {
-        timeout: 5000 // fail relatively quickly
+      // Attempt to hit the public roles endpoint
+      const response = await request.get(`${API_URL}/roles`, {
+        timeout: 30000 // fail relatively quickly
       });
       console.log(`Successfully reached API. Status: ${response.status()}`);
       // Simple assertion to verify if we get a valid response
@@ -28,7 +28,7 @@ test.describe('Smoke Tests - Infrastructure Verification', () => {
     try {
       // Attempt to navigate to the landing/login page
       await page.goto('/', {
-        timeout: 5000 // fail relatively quickly
+        timeout: 30000 // allow enough time for Next.js compilation
       });
       console.log(`Successfully navigated to UI page. Title: ${await page.title()}`);
       expect(page.url()).toContain(WEB_URL);

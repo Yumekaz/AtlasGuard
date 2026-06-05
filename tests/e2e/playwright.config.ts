@@ -6,8 +6,8 @@ import * as path from 'path';
 dotenv.config({ path: path.resolve(__dirname, '.env') });
 
 // Backend API and Frontend Web URLs
-export const WEB_URL = process.env.WEB_URL || 'http://localhost:3000';
-export const API_URL = process.env.API_URL || 'http://localhost:3001';
+export const WEB_URL = process.env.WEB_URL || 'http://127.0.0.1:3000';
+export const API_URL = process.env.API_URL || 'http://127.0.0.1:3001';
 
 // Set them back into process.env to ensure they are available in tests
 process.env.WEB_URL = WEB_URL;
@@ -21,8 +21,8 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
-  /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 1 : undefined,
+  /* Opt out of parallel tests to avoid SQLite database locks. */
+  workers: 1,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [['html', { open: 'never' }]],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */

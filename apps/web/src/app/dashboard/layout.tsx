@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { getSession, clearSession, UserSession } from '../../lib/auth';
+import { getSession, getToken, clearSession, getMe, UserSession } from '../../lib/auth';
 import Link from 'next/link';
 
 export default function DashboardLayout({
@@ -18,17 +18,61 @@ export default function DashboardLayout({
 
   useEffect(() => {
     const session = getSession();
-    if (!session) {
-      router.push('/login');
-    } else {
-      setUser(session);
-      setLoading(false);
+    const token = getToken();
+    if (!session || !token) {
+      clearSession();
+      router.replace('/login');
+      return;
     }
+
+    // Role-based path checks
+    const role = session.role;
+    const path = pathname || '';
+    let isAllowed = true;
+
+    if (path.startsWith('/dashboard/admin') && role !== 'ADMIN') {
+      isAllowed = false;
+    } else if (path.startsWith('/dashboard/operator') && role !== 'OPERATOR' && role !== 'ADMIN') {
+      isAllowed = false;
+    } else if (path.startsWith('/dashboard/responder') && role !== 'RESPONDER' && role !== 'ADMIN') {
+      isAllowed = false;
+    } else if (path.startsWith('/dashboard/tourist') && role !== 'TOURIST' && role !== 'ADMIN') {
+      isAllowed = false;
+    }
+
+    if (!isAllowed) {
+      const defaultDashboards = {
+        TOURIST: '/dashboard/tourist',
+        OPERATOR: '/dashboard/operator',
+        RESPONDER: '/dashboard/responder',
+        ADMIN: '/dashboard/admin',
+      };
+      router.replace(defaultDashboards[role] || '/login');
+      return;
+    }
+
+    // Verify token validity by calling /auth/me
+    let active = true;
+    getMe()
+      .then((res) => {
+        if (!active) return;
+        setUser(res.user);
+        setLoading(false);
+      })
+      .catch((err) => {
+        if (!active) return;
+        clearSession();
+        router.replace('/login');
+      });
+
+    return () => {
+      active = false;
+    };
   }, [router, pathname]);
 
   const handleLogout = () => {
     clearSession();
-    router.push('/login');
+    router.replace('/login');
   };
 
   if (loading || !user) {

@@ -11,21 +11,21 @@ export interface UserSession {
 
 export function saveSession(token: string, user: UserSession) {
   if (typeof window !== 'undefined') {
-    localStorage.setItem('atlasguard_token', token);
-    localStorage.setItem('atlasguard_user', JSON.stringify(user));
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(user));
   }
 }
 
 export function clearSession() {
   if (typeof window !== 'undefined') {
-    localStorage.removeItem('atlasguard_token');
-    localStorage.removeItem('atlasguard_user');
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
   }
 }
 
 export function getSession(): UserSession | null {
   if (typeof window !== 'undefined') {
-    const userStr = localStorage.getItem('atlasguard_user');
+    const userStr = localStorage.getItem('user');
     if (userStr) {
       try {
         return JSON.parse(userStr);
@@ -39,7 +39,7 @@ export function getSession(): UserSession | null {
 
 export function getToken(): string | null {
   if (typeof window !== 'undefined') {
-    return localStorage.getItem('atlasguard_token');
+    return localStorage.getItem('token');
   }
   return null;
 }

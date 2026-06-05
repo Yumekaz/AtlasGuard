@@ -3,9 +3,9 @@ import { test, expect } from '@playwright/test';
 const WEB_URL = process.env.WEB_URL || 'http://localhost:3000';
 
 test.describe('F4 Boundaries - Next.js Protected Dashboards', () => {
-  test('Accessing invalid dashboard sub-route (returns 404 or redirects)', async ({ page }) => {
-    // Authenticate first
-    await page.addInitScript(() => {
+  async function loginAsTourist(page: any) {
+    await page.goto('/login');
+    await page.evaluate(() => {
       window.localStorage.setItem('token', 'fake-tourist-token');
       window.localStorage.setItem('user', JSON.stringify({
         id: 'tourist-id-123',
@@ -14,7 +14,10 @@ test.describe('F4 Boundaries - Next.js Protected Dashboards', () => {
         role: 'TOURIST'
       }));
     });
+  }
 
+  test('Accessing invalid dashboard sub-route (returns 404 or redirects)', async ({ page }) => {
+    await loginAsTourist(page);
     await page.goto('/dashboard/tourist/invalid-sub-route-xyz');
     // Check that it shows 404 text or redirects
     await page.waitForTimeout(2000);
@@ -27,17 +30,7 @@ test.describe('F4 Boundaries - Next.js Protected Dashboards', () => {
   });
 
   test('LocalStorage token tampered with (should redirect to login)', async ({ page }) => {
-    // Set valid-looking token first
-    await page.addInitScript(() => {
-      window.localStorage.setItem('token', 'fake-tourist-token');
-      window.localStorage.setItem('user', JSON.stringify({
-        id: 'tourist-id-123',
-        name: 'Tourist Demo',
-        email: 'tourist@demo.com',
-        role: 'TOURIST'
-      }));
-    });
-
+    await loginAsTourist(page);
     await page.goto('/dashboard/tourist');
     
     // Now tamper with localStorage token
@@ -52,17 +45,7 @@ test.describe('F4 Boundaries - Next.js Protected Dashboards', () => {
   });
 
   test('Fast navigation toggling between dashboards', async ({ page }) => {
-    // Seed tourist auth
-    await page.addInitScript(() => {
-      window.localStorage.setItem('token', 'fake-tourist-token');
-      window.localStorage.setItem('user', JSON.stringify({
-        id: 'tourist-id-123',
-        name: 'Tourist Demo',
-        email: 'tourist@demo.com',
-        role: 'TOURIST'
-      }));
-    });
-
+    await loginAsTourist(page);
     // Navigate to tourist dashboard
     await page.goto('/dashboard/tourist');
     expect(page.url()).toContain('/dashboard/tourist');
@@ -75,16 +58,7 @@ test.describe('F4 Boundaries - Next.js Protected Dashboards', () => {
   });
 
   test('Accessing dashboard immediately after logout (should redirect)', async ({ page }) => {
-    // Login first
-    await page.addInitScript(() => {
-      window.localStorage.setItem('token', 'fake-tourist-token');
-      window.localStorage.setItem('user', JSON.stringify({
-        id: 'tourist-id-123',
-        name: 'Tourist Demo',
-        email: 'tourist@demo.com',
-        role: 'TOURIST'
-      }));
-    });
+    await loginAsTourist(page);
     await page.goto('/dashboard/tourist');
     expect(page.url()).toContain('/dashboard/tourist');
 
@@ -95,23 +69,19 @@ test.describe('F4 Boundaries - Next.js Protected Dashboards', () => {
     });
 
     // Attempt to access tourist dashboard again
-    await page.goto('/dashboard/tourist');
+    try {
+      await page.goto('/dashboard/tourist');
+    } catch (err: any) {
+      if (!err.message.includes('net::ERR_ABORTED')) {
+        throw err;
+      }
+    }
     await page.waitForURL('**/login**');
     expect(page.url()).toContain('/login');
   });
 
   test('Router transition checks from tourist to admin dashboard', async ({ page }) => {
-    // Login as TOURIST
-    await page.addInitScript(() => {
-      window.localStorage.setItem('token', 'fake-tourist-token');
-      window.localStorage.setItem('user', JSON.stringify({
-        id: 'tourist-id-123',
-        name: 'Tourist Demo',
-        email: 'tourist@demo.com',
-        role: 'TOURIST'
-      }));
-    });
-
+    await loginAsTourist(page);
     await page.goto('/dashboard/tourist');
     expect(page.url()).toContain('/dashboard/tourist');
 

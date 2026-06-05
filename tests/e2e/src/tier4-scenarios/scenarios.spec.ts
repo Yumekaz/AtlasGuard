@@ -6,7 +6,7 @@ const WEB_URL = process.env.WEB_URL || 'http://localhost:3000';
 test.describe('Tier 4 - Real-World Application Scenarios', () => {
 
   test('Scenario 1: Tourist emergency workflow auth (Signup -> Login -> Update Profile -> Check Dashboard -> Logout)', async ({ page, request }) => {
-    const email = `tourist_workflow_${Date.now()}@example.com`;
+    const email = `tourist_workflow_${Date.now()}_test@example.com`;
     const password = 'password123';
     const name = 'Workflow Tourist';
 
@@ -44,7 +44,8 @@ test.describe('Tier 4 - Real-World Application Scenarios', () => {
     expect([200, 204]).toContain(profileRes.status());
 
     // 4. Check Tourist Dashboard in Browser
-    await page.addInitScript((data) => {
+    await page.goto('/login');
+    await page.evaluate((data) => {
       window.localStorage.setItem('token', data.token);
       window.localStorage.setItem('user', JSON.stringify(data.user));
     }, { token, user });
@@ -58,7 +59,13 @@ test.describe('Tier 4 - Real-World Application Scenarios', () => {
       window.localStorage.removeItem('token');
       window.localStorage.removeItem('user');
     });
-    await page.goto('/dashboard/tourist');
+    try {
+      await page.goto('/dashboard/tourist');
+    } catch (err: any) {
+      if (!err.message.includes('net::ERR_ABORTED')) {
+        throw err;
+      }
+    }
     await page.waitForURL('**/login**');
     expect(page.url()).toContain('/login');
   });
@@ -155,7 +162,7 @@ test.describe('Tier 4 - Real-World Application Scenarios', () => {
     expect(page.url()).toContain('/dashboard/admin');
 
     // 3. Register new Operator user via API (acting as admin)
-    const newOpEmail = `op_config_${Date.now()}@example.com`;
+    const newOpEmail = `op_config_${Date.now()}_test@example.com`;
     const newOpPass = 'password123';
     const registerRes = await request.post(`${API_URL}/auth/register`, {
       data: {

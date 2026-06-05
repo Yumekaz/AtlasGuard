@@ -6,7 +6,7 @@ const WEB_URL = process.env.WEB_URL || 'http://localhost:3000';
 test.describe('Tier 3 - Cross-Feature & Pairwise Interactions', () => {
   
   test('Register new TOURIST user -> immediately Login -> Verify JWT token role', async ({ request }) => {
-    const email = `tourist_cross_${Date.now()}@example.com`;
+    const email = `tourist_cross_${Date.now()}_test@example.com`;
     const password = 'password123';
     
     // 1. Register
@@ -34,7 +34,7 @@ test.describe('Tier 3 - Cross-Feature & Pairwise Interactions', () => {
   });
 
   test('Register new OPERATOR user -> Login -> Call operator-only API route (Verify 200)', async ({ request }) => {
-    const email = `operator_cross_${Date.now()}@example.com`;
+    const email = `operator_cross_${Date.now()}_test@example.com`;
     const password = 'password123';
     
     // 1. Register
@@ -69,7 +69,7 @@ test.describe('Tier 3 - Cross-Feature & Pairwise Interactions', () => {
   });
 
   test('Register new RESPONDER user -> Login -> Access /dashboard/responder -> Access /dashboard/tourist (Verify redirection)', async ({ page, request }) => {
-    const email = `responder_cross_${Date.now()}@example.com`;
+    const email = `responder_cross_${Date.now()}_test@example.com`;
     const password = 'password123';
     
     // 1. Register and Login to get tokens
