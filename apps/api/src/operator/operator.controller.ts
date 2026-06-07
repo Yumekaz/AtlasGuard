@@ -48,3 +48,15 @@ export class OperatorController {
     return this.operatorService.listResponders();
   }
 }
+
+@Controller('operator')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('OPERATOR', 'ADMIN')
+export class OperatorCompatController {
+  constructor(private readonly operatorService: OperatorService) {}
+
+  @Get('incidents')
+  async getIncidents() {
+    return this.operatorService.listIncidents();
+  }
+}

@@ -37,3 +37,15 @@ export class ResponderController {
     return this.responderService.markResolved(id, req.user.id, req.user.role);
   }
 }
+
+@Controller('responder')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('RESPONDER', 'ADMIN')
+export class ResponderCompatController {
+  constructor(private readonly responderService: ResponderService) {}
+
+  @Get('incidents')
+  async getIncidents(@Request() req) {
+    return this.responderService.getAssignments(req.user.id);
+  }
+}
