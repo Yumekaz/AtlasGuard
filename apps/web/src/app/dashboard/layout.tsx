@@ -97,7 +97,7 @@ export default function DashboardLayout({
   // Define sidebar menus based on roles
   const menuItems = {
     TOURIST: [
-      { name: 'Safety Map', path: '/dashboard/tourist' },
+      { name: 'Safety Console', path: '/dashboard/tourist' },
       { name: 'My Active Trip', path: '/dashboard/tourist/trip' },
       { name: 'Emergency Profile', path: '/dashboard/tourist/profile' },
     ],

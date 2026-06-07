@@ -2,18 +2,22 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../hooks/useAuth';
 import { apiRequest } from '../../../lib/api';
-import { TouristProfile, Trip } from '@atlasguard/shared';
+import { TouristProfile, Trip, IncidentDetail, IncidentSummary } from '@atlasguard/shared';
 import Link from 'next/link';
 
 export default function TouristDashboard() {
+  const router = useRouter();
   const { user, loading: authLoading } = useAuth(['TOURIST', 'ADMIN']);
 
   const [profile, setProfile] = useState<TouristProfile | null>(null);
   const [activeTrip, setActiveTrip] = useState<Trip | null>(null);
   const [loading, setLoading] = useState(true);
   const [sosStatus, setSosStatus] = useState<'IDLE' | 'PENDING' | 'TRIGGERED'>('IDLE');
+  const [activeIncident, setActiveIncident] = useState<IncidentDetail | null>(null);
+  const [sosError, setSosError] = useState<string | null>(null);
 
   useEffect(() => {
     if (authLoading || !user) return;
@@ -30,6 +34,14 @@ export default function TouristDashboard() {
       // 2. Fetch active trip
       const tripData = await apiRequest<Trip>('/trips/active', 'GET');
       setActiveTrip(tripData);
+
+      const incidents = await apiRequest<IncidentSummary[]>('/incidents/my', 'GET');
+      const open = incidents.find((i) => !['RESOLVED', 'CANCELLED'].includes(i.status));
+      if (open) {
+        const detail = await apiRequest<IncidentDetail>(`/incidents/${open.id}/status`, 'GET');
+        setActiveIncident(detail);
+        setSosStatus('TRIGGERED');
+      }
     } catch (err: any) {
       // Keep state values as null depending on request failures
     } finally {
@@ -37,11 +49,21 @@ export default function TouristDashboard() {
     }
   };
 
-  const handleSos = () => {
+  const handleSos = async () => {
+    setSosError(null);
     setSosStatus('PENDING');
-    setTimeout(() => {
+    try {
+      const incident = await apiRequest<IncidentDetail>('/incidents/sos', 'POST', {
+        latitude: 27.3314,
+        longitude: 88.6138,
+      });
+      setActiveIncident(incident);
       setSosStatus('TRIGGERED');
-    }, 1200);
+      router.push(`/dashboard/tourist/incident/${incident.id}`);
+    } catch (err: any) {
+      setSosStatus('IDLE');
+      setSosError(err.message || 'Failed to trigger SOS');
+    }
   };
 
   if (authLoading || loading) {
@@ -146,7 +168,7 @@ export default function TouristDashboard() {
           </button>
         )}
 
-        {sosStatus === 'TRIGGERED' && (
+        {sosStatus === 'TRIGGERED' && activeIncident && (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
             <button className="btn btn-sos" style={{ animation: 'none', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', boxShadow: '0 8px 30px var(--accent-green-glow)' }}>
               <span>ACTIVE</span>
@@ -154,14 +176,21 @@ export default function TouristDashboard() {
               <span style={{ fontSize: '0.75rem' }}>ALERT SENT</span>
             </button>
             <div className="alert alert-success" style={{ margin: 0, padding: '0.75rem 1.25rem' }}>
-              <strong>SOS Broadcast Active!</strong> Control Center operator has been alerted and responder unit is being dispatched.
+              <strong>SOS Broadcast Active!</strong> Status: {activeIncident.status}. Track your incident live.
             </div>
-            <button 
-              onClick={() => setSosStatus('IDLE')}
-              style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.85rem' }}
+            <Link
+              href={`/dashboard/tourist/incident/${activeIncident.id}`}
+              className="btn btn-primary"
+              style={{ width: 'auto' }}
             >
-              Cancel SOS Panic Signal
-            </button>
+              View Live Incident Status
+            </Link>
+          </div>
+        )}
+
+        {sosError && (
+          <div className="alert alert-danger" style={{ maxWidth: '380px' }}>
+            <strong>Error:</strong> {sosError}
           </div>
         )}
 

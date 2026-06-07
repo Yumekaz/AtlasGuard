@@ -46,7 +46,7 @@ export class AdminController {
       },
     });
 
-    await this.prisma.touristProfile.upsert({
+    const touristProfile = await this.prisma.touristProfile.upsert({
       where: { userId: touristUser.id },
       update: {},
       create: {
@@ -59,6 +59,22 @@ export class AdminController {
         languagePreference: 'en',
       },
     });
+
+    const existingTrip = await this.prisma.trip.findFirst({
+      where: { touristId: touristProfile.id, status: 'ACTIVE' },
+    });
+    if (!existingTrip) {
+      await this.prisma.trip.create({
+        data: {
+          touristId: touristProfile.id,
+          destinationName: 'Gangtok, Sikkim',
+          startDate: new Date(),
+          endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          safetyId: 'AG-GAN-DEMO',
+          status: 'ACTIVE',
+        },
+      });
+    }
 
     // 2. Seed Operator Account
     await this.prisma.user.upsert({

@@ -1,50 +1,150 @@
-// apps/web/src/app/dashboard/operator/page.tsx
 'use client';
 
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../../hooks/useAuth';
+import { apiRequest } from '../../../lib/api';
+import { useIncidentSocket } from '../../../hooks/useIncidentSocket';
+import { IncidentDetail, IncidentSummary, ResponderSummary } from '@atlasguard/shared';
+import { StatusBadge, SeverityBadge } from '../../../components/StatusBadge';
+
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins} min${mins > 1 ? 's' : ''} ago`;
+  const hrs = Math.floor(mins / 60);
+  return `${hrs} hr${hrs > 1 ? 's' : ''} ago`;
+}
 
 export default function OperatorDashboard() {
   const { user, loading } = useAuth(['OPERATOR', 'ADMIN']);
 
-  if (loading || !user) {
-    return null;
-  }
+  const [incidents, setIncidents] = useState<IncidentSummary[]>([]);
+  const [responders, setResponders] = useState<ResponderSummary[]>([]);
+  const [loadingData, setLoadingData] = useState(true);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [assignModal, setAssignModal] = useState<IncidentSummary | null>(null);
+  const [selectedResponder, setSelectedResponder] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
-  // Mock Active Incidents
-  const activeIncidents = [
-    {
-      id: 'inc-1',
-      tourist: 'Alice Smith',
-      location: 'Viewpoint Ridge (Zone 3)',
-      type: 'SOS',
-      severity: 'CRITICAL',
-      status: 'CREATED',
-      time: '2 mins ago',
-      riskScore: 82,
-    },
-    {
-      id: 'inc-2',
-      tourist: 'Bob Jones',
-      location: 'Riverside Walkway (Zone 1)',
-      type: 'MEDICAL',
-      severity: 'HIGH',
-      status: 'ACKNOWLEDGED',
-      time: '15 mins ago',
-      riskScore: 68,
-    },
-  ];
+  const loadIncidents = useCallback(async () => {
+    try {
+      const data = await apiRequest<IncidentSummary[]>('/ops/incidents', 'GET');
+      setIncidents(data);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoadingData(false);
+    }
+  }, []);
+
+  const loadResponders = useCallback(async () => {
+    try {
+      const data = await apiRequest<ResponderSummary[]>('/ops/responders', 'GET');
+      setResponders(data);
+    } catch {
+      // non-fatal
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!loading && user) {
+      loadIncidents();
+      loadResponders();
+    }
+  }, [loading, user, loadIncidents, loadResponders]);
+
+  const upsertIncident = (updated: IncidentDetail) => {
+    const summary: IncidentSummary = {
+      id: updated.id,
+      type: updated.type,
+      status: updated.status,
+      severity: updated.severity,
+      latitude: updated.latitude,
+      longitude: updated.longitude,
+      riskScore: updated.riskScore,
+      touristName: updated.touristName,
+      safetyId: updated.safetyId,
+      destinationName: updated.destinationName,
+      assignedResponderName: updated.assignedResponderName,
+      createdAt: updated.createdAt,
+      updatedAt: updated.updatedAt,
+    };
+
+    setIncidents((prev) => {
+      const exists = prev.find((i) => i.id === summary.id);
+      if (summary.status === 'RESOLVED' || summary.status === 'CANCELLED') {
+        return prev.filter((i) => i.id !== summary.id);
+      }
+      if (exists) {
+        return prev.map((i) => (i.id === summary.id ? summary : i));
+      }
+      return [summary, ...prev];
+    });
+  };
+
+  useIncidentSocket({
+    onCreated: upsertIncident,
+    onUpdated: upsertIncident,
+  });
+
+  const handleAcknowledge = async (id: string) => {
+    setActionLoading(id);
+    setError(null);
+    try {
+      const updated = await apiRequest<IncidentDetail>(`/ops/incidents/${id}/acknowledge`, 'POST');
+      upsertIncident(updated);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleAssign = async () => {
+    if (!assignModal || !selectedResponder) return;
+    setActionLoading(assignModal.id);
+    setError(null);
+    try {
+      const updated = await apiRequest<IncidentDetail>(
+        `/ops/incidents/${assignModal.id}/assign`,
+        'POST',
+        { responderId: selectedResponder },
+      );
+      upsertIncident(updated);
+      setAssignModal(null);
+      setSelectedResponder('');
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  if (loading || !user) return null;
+
+  const sosCount = incidents.filter((i) => i.type === 'SOS').length;
+  const availableResponders = responders.filter((r) => r.availabilityStatus === 'AVAILABLE').length;
 
   return (
     <div style={{ animation: 'fadeIn 0.5s ease-out' }}>
-      {/* Metric Cards Banner */}
       <div className="grid-cols-4">
         <div className="glass metric-card">
           <div className="metric-header">
             <span className="metric-title">Active SOS Cases</span>
             <span style={{ color: 'var(--accent-red)', fontSize: '1.25rem' }}>●</span>
           </div>
-          <div className="metric-value" style={{ color: 'var(--accent-red)' }}>2</div>
+          <div className="metric-value" style={{ color: 'var(--accent-red)' }}>{sosCount}</div>
           <div className="metric-desc">Triage queue active</div>
+        </div>
+
+        <div className="glass metric-card">
+          <div className="metric-header">
+            <span className="metric-title">Total Active</span>
+            <span style={{ color: 'var(--accent-orange)', fontSize: '1.25rem' }}>●</span>
+          </div>
+          <div className="metric-value" style={{ color: 'var(--accent-orange)' }}>{incidents.length}</div>
+          <div className="metric-desc">Open incidents</div>
         </div>
 
         <div className="glass metric-card">
@@ -52,86 +152,152 @@ export default function OperatorDashboard() {
             <span className="metric-title">Responders Online</span>
             <span style={{ color: 'var(--accent-green)', fontSize: '1.25rem' }}>●</span>
           </div>
-          <div className="metric-value" style={{ color: 'var(--accent-green)' }}>5</div>
-          <div className="metric-desc">3 Available, 2 Busy</div>
+          <div className="metric-value" style={{ color: 'var(--accent-green)' }}>{responders.length}</div>
+          <div className="metric-desc">{availableResponders} Available</div>
         </div>
 
         <div className="glass metric-card">
           <div className="metric-header">
-            <span className="metric-title">Geofence Breaches</span>
-            <span style={{ color: 'var(--accent-orange)', fontSize: '1.25rem' }}>●</span>
-          </div>
-          <div className="metric-value" style={{ color: 'var(--accent-orange)' }}>1</div>
-          <div className="metric-desc">Active warnings issued</div>
-        </div>
-
-        <div className="glass metric-card">
-          <div className="metric-header">
-            <span className="metric-title">Avg Latency</span>
+            <span className="metric-title">Live Feed</span>
             <span style={{ color: 'var(--primary)', fontSize: '1.25rem' }}>⏱</span>
           </div>
-          <div className="metric-value">1.8m</div>
-          <div className="metric-desc">Acknowledgement speed</div>
+          <div className="metric-value" style={{ fontSize: '1.2rem' }}>WebSocket</div>
+          <div className="metric-desc">Real-time updates</div>
         </div>
       </div>
 
-      {/* Incident Dispatch Center Panel */}
+      {error && (
+        <div className="alert alert-danger" style={{ marginBottom: '1rem' }}>
+          <strong>Error:</strong> {error}
+        </div>
+      )}
+
       <div className="glass" style={{ padding: '2rem', marginBottom: '2rem' }}>
         <h3 style={{ fontSize: '1.25rem', marginBottom: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span>Active Operations Queue</span>
           <span className="badge badge-role" style={{ fontSize: '0.75rem' }}>Live Feed</span>
         </h3>
 
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.95rem' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-secondary)', paddingBottom: '0.75rem' }}>
-                <th style={{ padding: '0.75rem 1rem' }}>Case / Tourist</th>
-                <th style={{ padding: '0.75rem 1rem' }}>Location</th>
-                <th style={{ padding: '0.75rem 1rem' }}>Risk Score</th>
-                <th style={{ padding: '0.75rem 1rem' }}>Severity</th>
-                <th style={{ padding: '0.75rem 1rem' }}>Status</th>
-                <th style={{ padding: '0.75rem 1rem' }}>Created</th>
-                <th style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {activeIncidents.map((incident) => (
-                <tr key={incident.id} style={{ borderBottom: '1px solid var(--border-color)', height: '60px' }}>
-                  <td style={{ padding: '0.75rem 1rem' }}>
-                    <strong style={{ display: 'block', color: '#ffffff' }}>{incident.type}</strong>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{incident.tourist}</span>
-                  </td>
-                  <td style={{ padding: '0.75rem 1rem', color: 'var(--text-secondary)' }}>{incident.location}</td>
-                  <td style={{ padding: '0.75rem 1rem' }}>
-                    <code style={{ background: 'rgba(239,68,68,0.1)', color: 'var(--accent-red)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontWeight: 600 }}>
-                      {incident.riskScore}/100
-                    </code>
-                  </td>
-                  <td style={{ padding: '0.75rem 1rem' }}>
-                    <span className={`badge ${incident.severity === 'CRITICAL' ? 'badge-admin' : 'badge-operator'}`}>
-                      {incident.severity}
-                    </span>
-                  </td>
-                  <td style={{ padding: '0.75rem 1rem' }}>
-                    <span className="badge badge-role" style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-secondary)' }}>
-                      {incident.status}
-                    </span>
-                  </td>
-                  <td style={{ padding: '0.75rem 1rem', color: 'var(--text-secondary)' }}>{incident.time}</td>
-                  <td style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>
-                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                      <button className="btn btn-primary" style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem', width: 'auto' }}>
-                        Triage & Dispatch
-                      </button>
-                    </div>
-                  </td>
+        {loadingData ? (
+          <p style={{ color: 'var(--text-secondary)' }}>Loading incidents...</p>
+        ) : incidents.length === 0 ? (
+          <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '2rem' }}>
+            No active incidents. Waiting for SOS signals...
+          </p>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.95rem' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-secondary)' }}>
+                  <th style={{ padding: '0.75rem 1rem' }}>Case / Tourist</th>
+                  <th style={{ padding: '0.75rem 1rem' }}>Location</th>
+                  <th style={{ padding: '0.75rem 1rem' }}>Risk Score</th>
+                  <th style={{ padding: '0.75rem 1rem' }}>Severity</th>
+                  <th style={{ padding: '0.75rem 1rem' }}>Status</th>
+                  <th style={{ padding: '0.75rem 1rem' }}>Created</th>
+                  <th style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {incidents.map((incident) => (
+                  <tr key={incident.id} style={{ borderBottom: '1px solid var(--border-color)', height: '60px' }}>
+                    <td style={{ padding: '0.75rem 1rem' }}>
+                      <strong style={{ display: 'block', color: '#ffffff' }}>{incident.type}</strong>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                        {incident.touristName}
+                        {incident.safetyId && ` · ${incident.safetyId}`}
+                      </span>
+                    </td>
+                    <td style={{ padding: '0.75rem 1rem', color: 'var(--text-secondary)' }}>
+                      {incident.destinationName || `${incident.latitude.toFixed(4)}, ${incident.longitude.toFixed(4)}`}
+                    </td>
+                    <td style={{ padding: '0.75rem 1rem' }}>
+                      <code style={{ background: 'rgba(239,68,68,0.1)', color: 'var(--accent-red)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontWeight: 600 }}>
+                        {incident.riskScore}/100
+                      </code>
+                    </td>
+                    <td style={{ padding: '0.75rem 1rem' }}>
+                      <SeverityBadge severity={incident.severity} />
+                    </td>
+                    <td style={{ padding: '0.75rem 1rem' }}>
+                      <StatusBadge status={incident.status} />
+                    </td>
+                    <td style={{ padding: '0.75rem 1rem', color: 'var(--text-secondary)' }}>
+                      {timeAgo(incident.createdAt)}
+                    </td>
+                    <td style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>
+                      <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                        {incident.status === 'CREATED' && (
+                          <button
+                            onClick={() => handleAcknowledge(incident.id)}
+                            disabled={actionLoading === incident.id}
+                            className="btn btn-secondary"
+                            style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem', width: 'auto' }}
+                          >
+                            Acknowledge
+                          </button>
+                        )}
+                        {incident.status === 'ACKNOWLEDGED' && (
+                          <button
+                            onClick={() => { setAssignModal(incident); loadResponders(); }}
+                            disabled={actionLoading === incident.id}
+                            className="btn btn-primary"
+                            style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem', width: 'auto' }}
+                          >
+                            Assign Responder
+                          </button>
+                        )}
+                        {['ASSIGNED', 'DISPATCHED', 'REACHED'].includes(incident.status) && (
+                          <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                            {incident.assignedResponderName || 'Assigned'}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
+
+      {assignModal && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100,
+        }}>
+          <div className="glass metric-card" style={{ padding: '2rem', width: '100%', maxWidth: '480px' }}>
+            <h3 style={{ marginBottom: '1rem' }}>Assign Responder</h3>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
+              Incident: {assignModal.type} — {assignModal.touristName}
+            </p>
+            <div className="form-group">
+              <label className="form-label">Select Responder Unit</label>
+              <select
+                className="form-input"
+                value={selectedResponder}
+                onChange={(e) => setSelectedResponder(e.target.value)}
+              >
+                <option value="">Choose a responder...</option>
+                {responders.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.name} — {r.unitName} ({r.availabilityStatus})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
+              <button onClick={handleAssign} disabled={!selectedResponder} className="btn btn-primary" style={{ flex: 1 }}>
+                Confirm Assignment
+              </button>
+              <button onClick={() => { setAssignModal(null); setSelectedResponder(''); }} className="btn btn-secondary" style={{ flex: 1 }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -5,13 +5,22 @@ import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { TouristModule } from './tourist/tourist.module';
 import { AdminController } from './admin/admin.controller';
-import { OperatorController } from './operator/operator.controller';
-import { ResponderController } from './responder/responder.controller';
+import { IncidentsModule } from './incidents/incidents.module';
+import { OperatorModule } from './operator/operator.module';
+import { ResponderModule } from './responder/responder.module';
+import { EventsModule } from './events/events.module';
 
 @Module({
-  imports: [PrismaModule, AuthModule, TouristModule],
-  controllers: [AppController, AdminController, OperatorController, ResponderController],
+  imports: [
+    PrismaModule,
+    AuthModule,
+    TouristModule,
+    EventsModule,
+    IncidentsModule,
+    OperatorModule,
+    ResponderModule,
+  ],
+  controllers: [AppController, AdminController],
   providers: [AppService],
 })
 export class AppModule {}
-

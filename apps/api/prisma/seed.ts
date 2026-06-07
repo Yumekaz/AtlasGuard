@@ -27,7 +27,7 @@ async function main() {
     },
   });
 
-  await prisma.touristProfile.upsert({
+  const touristProfile = await prisma.touristProfile.upsert({
     where: { userId: touristUser.id },
     update: {},
     create: {
@@ -40,6 +40,23 @@ async function main() {
       languagePreference: 'en',
     },
   });
+
+  // Seed an active trip so SOS demo works out of the box
+  const existingTrip = await prisma.trip.findFirst({
+    where: { touristId: touristProfile.id, status: 'ACTIVE' },
+  });
+  if (!existingTrip) {
+    await prisma.trip.create({
+      data: {
+        touristId: touristProfile.id,
+        destinationName: 'Gangtok, Sikkim',
+        startDate: new Date(),
+        endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        safetyId: 'AG-GAN-DEMO',
+        status: 'ACTIVE',
+      },
+    });
+  }
 
   // 2. Seed Operator Account
   console.log('Seeding operator account...');
