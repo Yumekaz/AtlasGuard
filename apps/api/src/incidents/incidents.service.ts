@@ -103,6 +103,7 @@ export class IncidentsService {
       latitude: incident.latitude,
       longitude: incident.longitude,
       riskScore: incident.riskScore,
+      riskExplanation: incident.riskExplanation ?? undefined,
       touristName: incident.tourist?.user?.name ?? 'Unknown',
       safetyId: incident.trip?.safetyId,
       destinationName: incident.trip?.destinationName,

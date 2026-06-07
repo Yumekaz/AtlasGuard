@@ -49,6 +49,7 @@ export default function ResponderDashboard() {
       latitude: updated.latitude,
       longitude: updated.longitude,
       riskScore: updated.riskScore,
+      riskExplanation: updated.riskExplanation,
       touristName: updated.touristName,
       safetyId: updated.safetyId,
       destinationName: updated.destinationName,
@@ -134,6 +135,7 @@ export default function ResponderDashboard() {
                   <RiskExplanationPanel
                     riskScore={assignment.riskScore}
                     severity={assignment.severity}
+                    riskExplanation={assignment.riskExplanation}
                     compact
                   />
                 </div>

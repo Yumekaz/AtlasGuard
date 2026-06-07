@@ -15,12 +15,12 @@ export function getRiskScoreBackground(score: number): string {
   return 'rgba(239, 68, 68, 0.15)';
 }
 
-function parseExplanation(raw?: string): RiskScoreExplanation | null {
-  if (!raw) return null;
+function parseExplanation(raw?: string): { data: RiskScoreExplanation | null; parseFailed: boolean } {
+  if (!raw) return { data: null, parseFailed: false };
   try {
-    return JSON.parse(raw) as RiskScoreExplanation;
+    return { data: JSON.parse(raw) as RiskScoreExplanation, parseFailed: false };
   } catch {
-    return null;
+    return { data: null, parseFailed: true };
   }
 }
 
@@ -37,7 +37,7 @@ export function RiskExplanationPanel({
   riskExplanation,
   compact = false,
 }: RiskExplanationPanelProps) {
-  const explanation = parseExplanation(riskExplanation);
+  const { data: explanation, parseFailed } = parseExplanation(riskExplanation);
   const reasons = explanation?.reasons ?? [];
   const color = getRiskScoreColor(riskScore);
   const background = getRiskScoreBackground(riskScore);
@@ -65,6 +65,12 @@ export function RiskExplanationPanel({
           </span>
         )}
       </div>
+
+      {parseFailed && (
+        <p style={{ margin: 0, fontSize: compact ? '0.85rem' : '0.9rem', color: 'var(--accent-orange)' }}>
+          Risk breakdown unavailable — stored explanation could not be parsed.
+        </p>
+      )}
 
       {reasons.length > 0 && (
         <div>

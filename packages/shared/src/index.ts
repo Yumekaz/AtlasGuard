@@ -149,6 +149,7 @@ export interface IncidentSummary {
   latitude: number;
   longitude: number;
   riskScore: number;
+  riskExplanation?: string;
   touristName: string;
   safetyId?: string;
   destinationName?: string;
@@ -367,7 +368,13 @@ export type {
   RiskScoreInput,
 } from './risk-scoring';
 
-export { scoreToSeverity, computeRiskScore } from './risk-scoring';
+export {
+  scoreToSeverity,
+  computeRiskScore,
+  capRiskScore,
+  RISK_SCORE_CAP,
+  MAX_ACCUMULATED_RULE_SCORE,
+} from './risk-scoring';
 
 export interface DashboardSummary {
   totalActive: number;

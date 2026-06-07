@@ -15,6 +15,15 @@ export interface RiskScoreInput {
   nearbyActiveIncidentCount: number;
 }
 
+export const RISK_SCORE_CAP = 100;
+
+/** Sum of all scoring rules when every rule applies (current Bible §17.3 rules). */
+export const MAX_ACCUMULATED_RULE_SCORE = 90;
+
+export function capRiskScore(score: number): number {
+  return Math.min(score, RISK_SCORE_CAP);
+}
+
 export function scoreToSeverity(score: number): IncidentSeverity {
   if (score <= 30) return 'LOW';
   if (score <= 55) return 'MEDIUM';
@@ -66,7 +75,7 @@ export function computeRiskScore(input: RiskScoreInput): RiskScoreExplanation {
     );
   }
 
-  const cappedScore = Math.min(score, 100);
+  const cappedScore = capRiskScore(score);
 
   if (reasons.length === 0) {
     reasons.push('Baseline risk — no elevated factors detected');

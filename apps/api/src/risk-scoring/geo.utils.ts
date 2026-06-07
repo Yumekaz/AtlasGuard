@@ -16,7 +16,15 @@ export function haversineDistanceKm(
   return EARTH_RADIUS_KM * c;
 }
 
+const INCIDENT_TIMEZONE = 'Asia/Kolkata';
+
 export function isNightTime(date: Date = new Date()): boolean {
-  const hour = date.getHours();
+  const hour = Number(
+    new Intl.DateTimeFormat('en-US', {
+      hour: 'numeric',
+      hour12: false,
+      timeZone: INCIDENT_TIMEZONE,
+    }).format(date),
+  );
   return hour >= 20 || hour < 6;
 }

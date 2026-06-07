@@ -38,7 +38,7 @@ export class RiskScoringService {
 
     const responders = await this.prisma.responderProfile.findMany({
       where: {
-        availabilityStatus: { in: ['AVAILABLE', 'BUSY'] },
+        availabilityStatus: 'AVAILABLE',
         lastLatitude: { not: null },
         lastLongitude: { not: null },
       },

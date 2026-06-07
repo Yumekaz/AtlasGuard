@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { computeRiskScore, scoreToSeverity } from './risk-scoring';
+import {
+  capRiskScore,
+  computeRiskScore,
+  MAX_ACCUMULATED_RULE_SCORE,
+  RISK_SCORE_CAP,
+  scoreToSeverity,
+} from './risk-scoring';
 
 describe('scoreToSeverity', () => {
   it('maps score bands to severity levels', () => {
@@ -44,7 +50,7 @@ describe('computeRiskScore', () => {
     expect(result.reasons.some((r) => r.includes('HIGH-risk geofence'))).toBe(true);
   });
 
-  it('stacks multiple rules and caps at 100', () => {
+  it('stacks all current rules to the documented maximum of 90', () => {
     const result = computeRiskScore({
       incidentType: 'MEDICAL',
       highestZoneRisk: 'CRITICAL',
@@ -53,9 +59,14 @@ describe('computeRiskScore', () => {
       nearestResponderDistanceKm: 12,
       nearbyActiveIncidentCount: 5,
     });
-    expect(result.score).toBe(90);
+    expect(result.score).toBe(MAX_ACCUMULATED_RULE_SCORE);
     expect(result.severity).toBe('CRITICAL');
     expect(result.reasons.length).toBe(6);
+  });
+
+  it('caps scores at RISK_SCORE_CAP via capRiskScore', () => {
+    expect(capRiskScore(110)).toBe(RISK_SCORE_CAP);
+    expect(capRiskScore(MAX_ACCUMULATED_RULE_SCORE)).toBe(MAX_ACCUMULATED_RULE_SCORE);
   });
 
   it('does not apply distant responder rule when within 5 km', () => {
@@ -64,6 +75,24 @@ describe('computeRiskScore', () => {
       nearestResponderDistanceKm: 4.9,
     });
     expect(result.reasons.some((r) => r.includes('responder'))).toBe(false);
+  });
+
+  it('does not apply distant responder rule at exactly 5.0 km (threshold is >5)', () => {
+    const result = computeRiskScore({
+      ...baseInput,
+      nearestResponderDistanceKm: 5.0,
+    });
+    expect(result.score).toBe(0);
+    expect(result.reasons.some((r) => r.includes('responder'))).toBe(false);
+  });
+
+  it('does not apply nearby incidents rule at exactly 3 (threshold is >3)', () => {
+    const result = computeRiskScore({
+      ...baseInput,
+      nearbyActiveIncidentCount: 3,
+    });
+    expect(result.score).toBe(0);
+    expect(result.reasons.some((r) => r.includes('active incidents within'))).toBe(false);
   });
 
   it('applies night-time rule (+10)', () => {

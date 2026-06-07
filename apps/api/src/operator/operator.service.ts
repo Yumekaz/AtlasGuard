@@ -70,8 +70,13 @@ export class OperatorService {
     }
 
     const acknowledgedEvents = await this.prisma.incidentEvent.findMany({
-      where: { eventType: 'ACKNOWLEDGED' },
+      where: {
+        eventType: 'ACKNOWLEDGED',
+        createdAt: { gte: startOfToday },
+      },
+      orderBy: { createdAt: 'asc' },
       select: {
+        incidentId: true,
         createdAt: true,
         incident: { select: { createdAt: true } },
       },
@@ -79,13 +84,22 @@ export class OperatorService {
 
     let averageResponseTimeMinutes: number | null = null;
     if (acknowledgedEvents.length > 0) {
-      const totalMinutes = acknowledgedEvents.reduce((sum, event) => {
-        const diffMs =
-          event.createdAt.getTime() - event.incident.createdAt.getTime();
-        return sum + diffMs / 60000;
-      }, 0);
-      averageResponseTimeMinutes =
-        Math.round((totalMinutes / acknowledgedEvents.length) * 10) / 10;
+      const seenIncidents = new Set<string>();
+      const responseTimes: number[] = [];
+
+      for (const event of acknowledgedEvents) {
+        if (seenIncidents.has(event.incidentId)) continue;
+        seenIncidents.add(event.incidentId);
+        responseTimes.push(
+          (event.createdAt.getTime() - event.incident.createdAt.getTime()) / 60000,
+        );
+      }
+
+      if (responseTimes.length > 0) {
+        const totalMinutes = responseTimes.reduce((sum, mins) => sum + mins, 0);
+        averageResponseTimeMinutes =
+          Math.round((totalMinutes / responseTimes.length) * 10) / 10;
+      }
     }
 
     const resolvedToday = await this.prisma.incident.count({

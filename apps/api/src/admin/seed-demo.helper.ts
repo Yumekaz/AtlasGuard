@@ -1,11 +1,29 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { seedRiskZones } from '../risk-zones/seed-risk-zones';
+import { IncidentEventsService } from '../incidents/incident-events.service';
 
 export const DEMO_PASSWORD = 'password123';
 
 export const DEMO_MEDICAL_NOTES =
   'Severe asthma — carries rescue inhaler. High altitude sensitivity.';
+
+let demoSimLock: Promise<void> = Promise.resolve();
+
+export async function withDemoSimLock<T>(fn: () => Promise<T>): Promise<T> {
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const previous = demoSimLock;
+  demoSimLock = previous.then(() => gate);
+  await previous;
+  try {
+    return await fn();
+  } finally {
+    release();
+  }
+}
 
 export async function seedDemoAccounts(prisma: PrismaClient) {
   const salt = await bcrypt.genSalt(10);
@@ -104,42 +122,74 @@ export async function seedDemoAccounts(prisma: PrismaClient) {
 
   await seedRiskZones(prisma, adminUser.id);
 
-  return { touristProfile, adminUser };
+  return { touristProfile, adminUser, responderUser };
 }
 
-export async function cancelOpenIncidents(prisma: PrismaClient) {
-  const openIncidents = await prisma.incident.findMany({
+export async function cancelOpenIncidents(
+  tx: Prisma.TransactionClient,
+  eventsService: IncidentEventsService,
+  actorId: string,
+) {
+  const openIncidents = await tx.incident.findMany({
     where: { status: { notIn: ['RESOLVED', 'CANCELLED'] } },
     select: { id: true, status: true, tourist: { select: { userId: true } } },
   });
 
   for (const incident of openIncidents) {
     if (incident.status === 'CREATED') {
-      await prisma.incident.update({
+      await tx.incident.update({
         where: { id: incident.id },
         data: { status: 'CANCELLED' },
       });
-      await prisma.incidentEvent.create({
-        data: {
-          incidentId: incident.id,
-          actorId: incident.tourist.userId,
-          eventType: 'CANCELLED',
-          metadata: JSON.stringify({ reason: 'demo_reset' }),
-          previousHash: 'GENESIS',
-          currentHash: `demo-cancel-${incident.id}`,
-        },
+      await eventsService.appendEvent(tx, {
+        incidentId: incident.id,
+        actorId: incident.tourist.userId,
+        eventType: 'CANCELLED',
+        metadata: { reason: 'demo_reset' },
       });
     } else {
-      await prisma.incident.update({
+      await tx.incident.update({
         where: { id: incident.id },
         data: { status: 'RESOLVED' },
       });
-      await prisma.responderAssignment.updateMany({
+      await tx.responderAssignment.updateMany({
         where: { incidentId: incident.id, status: { in: ['ASSIGNED', 'ACCEPTED'] } },
         data: { status: 'COMPLETED', completedAt: new Date() },
+      });
+      await eventsService.appendEvent(tx, {
+        incidentId: incident.id,
+        actorId,
+        eventType: 'RESOLVED',
+        metadata: { reason: 'demo_reset' },
       });
     }
   }
 
   return openIncidents.length;
+}
+
+export async function prepareDemoScenario(
+  prisma: PrismaClient,
+  eventsService: IncidentEventsService,
+  touristProfileId: string,
+  adminUserId: string,
+) {
+  return prisma.$transaction(async (tx) => {
+    const cancelledCount = await cancelOpenIncidents(tx, eventsService, adminUserId);
+
+    await tx.touristProfile.update({
+      where: { id: touristProfileId },
+      data: { medicalNotes: DEMO_MEDICAL_NOTES },
+    });
+
+    await tx.responderProfile.updateMany({
+      where: { user: { email: 'responder@demo.com' } },
+      data: {
+        lastLatitude: 27.31,
+        lastLongitude: 88.58,
+      },
+    });
+
+    return cancelledCount;
+  });
 }

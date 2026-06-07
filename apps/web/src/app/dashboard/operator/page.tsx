@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../../hooks/useAuth';
 import { apiRequest } from '../../../lib/api';
 import { useIncidentSocket } from '../../../hooks/useIncidentSocket';
@@ -37,7 +37,9 @@ export default function OperatorDashboard() {
   });
   const [geofenceAlert, setGeofenceAlert] = useState<GeofenceAlertPayload | null>(null);
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [summaryWarning, setSummaryWarning] = useState<string | null>(null);
   const [selectedIncident, setSelectedIncident] = useState<IncidentDetail | null>(null);
+  const summaryDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const loadIncidents = useCallback(async () => {
     try {
@@ -63,10 +65,18 @@ export default function OperatorDashboard() {
     try {
       const data = await apiRequest<DashboardSummary>('/ops/dashboard/summary', 'GET');
       setSummary(data);
-    } catch {
-      // non-fatal
+      setSummaryWarning(null);
+    } catch (err: any) {
+      setSummaryWarning(err.message || 'Dashboard summary unavailable');
     }
   }, []);
+
+  const scheduleSummaryRefresh = useCallback(() => {
+    if (summaryDebounceRef.current) clearTimeout(summaryDebounceRef.current);
+    summaryDebounceRef.current = setTimeout(() => {
+      loadSummary();
+    }, 500);
+  }, [loadSummary]);
 
   const loadMapData = useCallback(async () => {
     try {
@@ -89,6 +99,12 @@ export default function OperatorDashboard() {
       loadMapData();
     }
   }, [loading, user, loadMapData]);
+
+  useEffect(() => {
+    return () => {
+      if (summaryDebounceRef.current) clearTimeout(summaryDebounceRef.current);
+    };
+  }, []);
 
   const upsertIncident = (updated: IncidentDetail) => {
     const summary: IncidentSummary = {
@@ -119,9 +135,14 @@ export default function OperatorDashboard() {
     });
   };
 
+  const handleSocketIncident = (updated: IncidentDetail) => {
+    upsertIncident(updated);
+    scheduleSummaryRefresh();
+  };
+
   useIncidentSocket({
-    onCreated: upsertIncident,
-    onUpdated: upsertIncident,
+    onCreated: handleSocketIncident,
+    onUpdated: handleSocketIncident,
     onGeofenceAlert: (alert) => setGeofenceAlert(alert),
   });
 
@@ -244,6 +265,12 @@ export default function OperatorDashboard() {
         </div>
       )}
 
+      {summaryWarning && (
+        <div className="alert alert-warning" style={{ marginBottom: '1rem' }}>
+          <strong>Summary:</strong> {summaryWarning}
+        </div>
+      )}
+
       {error && (
         <div className="alert alert-danger" style={{ marginBottom: '1rem' }}>
           <strong>Error:</strong> {error}
@@ -352,7 +379,7 @@ export default function OperatorDashboard() {
                       <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
                         {incident.status === 'CREATED' && (
                           <button
-                            onClick={() => handleAcknowledge(incident.id)}
+                            onClick={(e) => { e.stopPropagation(); handleAcknowledge(incident.id); }}
                             disabled={actionLoading === incident.id}
                             className="btn btn-secondary"
                             style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem', width: 'auto' }}
@@ -362,7 +389,7 @@ export default function OperatorDashboard() {
                         )}
                         {incident.status === 'ACKNOWLEDGED' && (
                           <button
-                            onClick={() => { setAssignModal(incident); loadResponders(); }}
+                            onClick={(e) => { e.stopPropagation(); setAssignModal(incident); loadResponders(); }}
                             disabled={actionLoading === incident.id}
                             className="btn btn-primary"
                             style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem', width: 'auto' }}
