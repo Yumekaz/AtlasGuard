@@ -121,13 +121,13 @@ test.describe('Phase 3 - SOS Workflow (Browser)', () => {
     await expect(acknowledgeBtn).toBeVisible({ timeout: 10000 });
     await acknowledgeBtn.click();
 
-    await expect(operatorPage.getByText('ACKNOWLEDGED')).toBeVisible({ timeout: 10000 });
+    await expect(operatorPage.getByText('ACKNOWLEDGED', { exact: true })).toBeVisible({ timeout: 10000 });
 
     await operatorPage.getByRole('button', { name: 'Assign Responder' }).click();
     await operatorPage.locator('select.form-input').selectOption({ index: 1 });
     await operatorPage.getByRole('button', { name: 'Confirm Assignment' }).click();
 
-    await expect(operatorPage.getByText('ASSIGNED')).toBeVisible({ timeout: 10000 });
+    await expect(operatorPage.getByText('ASSIGNED', { exact: true })).toBeVisible({ timeout: 10000 });
 
     // Responder flow
     const responderContext = await browser.newContext();
