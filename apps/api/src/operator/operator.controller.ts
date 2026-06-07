@@ -47,6 +47,11 @@ export class OperatorController {
   async getResponders() {
     return this.operatorService.listResponders();
   }
+
+  @Get('map')
+  async getMapData() {
+    return this.operatorService.getMapData();
+  }
 }
 
 @Controller('operator')

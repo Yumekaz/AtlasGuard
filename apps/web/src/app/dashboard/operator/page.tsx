@@ -4,8 +4,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../../hooks/useAuth';
 import { apiRequest } from '../../../lib/api';
 import { useIncidentSocket } from '../../../hooks/useIncidentSocket';
-import { IncidentDetail, IncidentSummary, ResponderSummary } from '@atlasguard/shared';
+import { GeofenceAlertPayload, IncidentDetail, IncidentSummary, OpsMapData, ResponderSummary } from '@atlasguard/shared';
 import { StatusBadge, SeverityBadge } from '../../../components/StatusBadge';
+import AtlasMap, { MapLayers } from '../../../components/AtlasMap';
 
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -26,6 +27,14 @@ export default function OperatorDashboard() {
   const [assignModal, setAssignModal] = useState<IncidentSummary | null>(null);
   const [selectedResponder, setSelectedResponder] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [mapData, setMapData] = useState<OpsMapData | null>(null);
+  const [mapLayers, setMapLayers] = useState<MapLayers>({
+    zones: true,
+    incidents: true,
+    responders: true,
+    tourist: false,
+  });
+  const [geofenceAlert, setGeofenceAlert] = useState<GeofenceAlertPayload | null>(null);
 
   const loadIncidents = useCallback(async () => {
     try {
@@ -47,12 +56,24 @@ export default function OperatorDashboard() {
     }
   }, []);
 
+  const loadMapData = useCallback(async () => {
+    try {
+      const data = await apiRequest<OpsMapData>('/ops/map', 'GET');
+      setMapData(data);
+      setIncidents(data.incidents);
+      setResponders(data.responders);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoadingData(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (!loading && user) {
-      loadIncidents();
-      loadResponders();
+      loadMapData();
     }
-  }, [loading, user, loadIncidents, loadResponders]);
+  }, [loading, user, loadMapData]);
 
   const upsertIncident = (updated: IncidentDetail) => {
     const summary: IncidentSummary = {
@@ -86,7 +107,12 @@ export default function OperatorDashboard() {
   useIncidentSocket({
     onCreated: upsertIncident,
     onUpdated: upsertIncident,
+    onGeofenceAlert: (alert) => setGeofenceAlert(alert),
   });
+
+  const toggleLayer = (key: keyof MapLayers) => {
+    setMapLayers((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
 
   const handleAcknowledge = async (id: string) => {
     setActionLoading(id);
@@ -171,6 +197,42 @@ export default function OperatorDashboard() {
           <strong>Error:</strong> {error}
         </div>
       )}
+
+      {geofenceAlert && (
+        <div className="alert alert-warning" style={{ marginBottom: '1rem' }}>
+          <strong>Geofence Alert</strong>
+          {geofenceAlert.touristName && ` — ${geofenceAlert.touristName}`}: {geofenceAlert.message}
+        </div>
+      )}
+
+      <div className="glass" style={{ padding: '1.5rem', marginBottom: '2rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+          <h3 style={{ fontSize: '1.25rem', margin: 0 }}>Operations Map</h3>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            {(['zones', 'incidents', 'responders'] as const).map((layer) => (
+              <button
+                key={layer}
+                onClick={() => toggleLayer(layer)}
+                className={`btn ${mapLayers[layer] ? 'btn-primary' : 'btn-secondary'}`}
+                style={{ width: 'auto', fontSize: '0.75rem', padding: '0.35rem 0.7rem', textTransform: 'capitalize' }}
+              >
+                {layer}
+              </button>
+            ))}
+          </div>
+        </div>
+        {mapData ? (
+          <AtlasMap
+            zones={mapData.zones}
+            incidents={incidents}
+            responders={responders}
+            layers={mapLayers}
+            height="380px"
+          />
+        ) : (
+          <p style={{ color: 'var(--text-secondary)' }}>Loading map data...</p>
+        )}
+      </div>
 
       <div className="glass" style={{ padding: '2rem', marginBottom: '2rem' }}>
         <h3 style={{ fontSize: '1.25rem', marginBottom: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

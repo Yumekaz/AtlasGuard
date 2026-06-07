@@ -98,6 +98,7 @@ export default function DashboardLayout({
   const menuItems = {
     TOURIST: [
       { name: 'Safety Console', path: '/dashboard/tourist' },
+      { name: 'Safety Map', path: '/dashboard/tourist/map' },
       { name: 'My Active Trip', path: '/dashboard/tourist/trip' },
       { name: 'Emergency Profile', path: '/dashboard/tourist/profile' },
     ],

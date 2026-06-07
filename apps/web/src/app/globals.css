@@ -1,5 +1,7 @@
 /* apps/web/src/app/globals.css */
 
+@import 'leaflet/dist/leaflet.css';
+
 /* Fonts Import */
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
 
@@ -528,4 +530,20 @@ h1, h2, h3, h4, h5, h6 {
   100% {
     background-position: 200% 0;
   }
+}
+
+/* Leaflet map overrides */
+.atlas-map-container .leaflet-container {
+  background: var(--bg-main);
+  font-family: var(--font-family-body);
+}
+
+.atlas-map-container .leaflet-popup-content-wrapper {
+  background: #1e293b;
+  color: var(--text-primary);
+  border-radius: 8px;
+}
+
+.atlas-map-container .leaflet-popup-tip {
+  background: #1e293b;
 }

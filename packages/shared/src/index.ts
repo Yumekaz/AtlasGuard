@@ -208,3 +208,78 @@ export const INCIDENT_STATUS_ORDER: IncidentStatus[] = [
   'RESOLVED',
 ];
 
+// ----------------------------------------------------
+// Risk Zones & Geofencing (Phase 4)
+// ----------------------------------------------------
+
+export type RiskLevel = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+
+export interface GeoJsonPolygon {
+  type: 'Polygon';
+  coordinates: number[][][];
+}
+
+export interface RiskZone {
+  id: string;
+  name: string;
+  description: string;
+  riskLevel: RiskLevel;
+  polygon: GeoJsonPolygon;
+  active: boolean;
+  createdAt: string;
+}
+
+export interface MatchedZone {
+  id: string;
+  name: string;
+  riskLevel: RiskLevel;
+  description: string;
+}
+
+export interface GeofenceCheckRequest {
+  latitude: number;
+  longitude: number;
+  tripId?: string;
+  lastAlertedZoneId?: string;
+}
+
+export interface GeofenceCheckResult {
+  inside: boolean;
+  matchedZones: MatchedZone[];
+  highestRisk: RiskLevel | null;
+  message: string;
+  shouldAlert: boolean;
+  alertZoneId?: string;
+}
+
+export interface GeofenceAlertPayload {
+  zoneId: string;
+  zoneName: string;
+  riskLevel: RiskLevel;
+  message: string;
+  latitude: number;
+  longitude: number;
+  touristName?: string;
+}
+
+export interface OpsMapData {
+  zones: RiskZone[];
+  incidents: IncidentSummary[];
+  responders: ResponderSummary[];
+}
+
+export const RISK_LEVEL_ORDER: Record<RiskLevel, number> = {
+  LOW: 1,
+  MEDIUM: 2,
+  HIGH: 3,
+  CRITICAL: 4,
+};
+
+export const DEMO_LOCATIONS = {
+  safeCorridor: { lat: 27.328, lng: 88.6045, label: 'Safe Tourism Corridor' },
+  viewpointRidge: { lat: 27.335, lng: 88.620, label: 'Viewpoint Ridge (HIGH)' },
+  mgMarg: { lat: 27.3305, lng: 88.610, label: 'MG Marg Festival Zone' },
+  remoteNorth: { lat: 27.34, lng: 88.6275, label: 'Remote North Route (CRITICAL)' },
+  defaultStart: { lat: 27.325, lng: 88.600, label: 'Outside all zones' },
+} as const;
+

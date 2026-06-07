@@ -138,15 +138,17 @@ export default function TouristDashboard() {
     );
   }
 
-  // State 3: Fully set up (Display Active Trip + Geofence Warning + SOS trigger)
+  // State 3: Fully set up (Display Active Trip + SOS trigger)
   return (
     <div style={{ animation: 'fadeIn 0.5s ease-out' }}>
-      {/* Geofence notification alert */}
-      <div className="alert alert-warning" role="alert">
-        <span style={{ fontSize: '1.5rem' }}>⚠️</span>
+      <div className="alert alert-info" style={{ marginBottom: '1.5rem' }}>
+        <span style={{ fontSize: '1.25rem' }}>🗺️</span>
         <div>
-          <strong style={{ display: 'block', marginBottom: '0.25rem' }}>Geofence Alert (Simulated)</strong>
-          You are currently near a landside-prone route (Restricted Area 3) in {activeTrip.destinationName}. Avoid traveling during dark hours.
+          <strong style={{ display: 'block', marginBottom: '0.25rem' }}>Live Geofence Monitoring</strong>
+          Use the Safety Map to simulate your location and receive real-time zone alerts for {activeTrip.destinationName}.
+          <Link href="/dashboard/tourist/map" className="btn btn-primary" style={{ width: 'auto', marginTop: '0.75rem', fontSize: '0.85rem' }}>
+            Open Safety Map
+          </Link>
         </div>
       </div>
 

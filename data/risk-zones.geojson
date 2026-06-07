@@ -1,0 +1,85 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Viewpoint Ridge",
+        "description": "Landslide-prone route with restricted night access",
+        "riskLevel": "HIGH"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [88.6180, 27.3330],
+            [88.6220, 27.3330],
+            [88.6220, 27.3370],
+            [88.6180, 27.3370],
+            [88.6180, 27.3330]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "MG Marg Festival Zone",
+        "description": "High-crowd festival area with elevated pickpocket and stampede risk",
+        "riskLevel": "MEDIUM"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [88.6080, 27.3290],
+            [88.6120, 27.3290],
+            [88.6120, 27.3320],
+            [88.6080, 27.3320],
+            [88.6080, 27.3290]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Remote North Sikkim Route",
+        "description": "Restricted remote area with sparse medical support",
+        "riskLevel": "CRITICAL"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [88.6250, 27.3380],
+            [88.6300, 27.3380],
+            [88.6300, 27.3420],
+            [88.6250, 27.3420],
+            [88.6250, 27.3380]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Safe Tourism Corridor",
+        "description": "Monitored safe corridor with regular patrol coverage",
+        "riskLevel": "LOW"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [88.6020, 27.3260],
+            [88.6070, 27.3260],
+            [88.6070, 27.3300],
+            [88.6020, 27.3300],
+            [88.6020, 27.3260]
+          ]
+        ]
+      }
+    }
+  ]
+}

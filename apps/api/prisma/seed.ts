@@ -2,6 +2,7 @@
 
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
+import { seedRiskZones } from '../src/risk-zones/seed-risk-zones';
 
 const prisma = new PrismaClient();
 
@@ -101,7 +102,7 @@ async function main() {
 
   // 4. Seed Admin Account
   console.log('Seeding admin account...');
-  await prisma.user.upsert({
+  const adminUser = await prisma.user.upsert({
     where: { email: 'admin@demo.com' },
     update: { passwordHash: hashedPassword },
     create: {
@@ -112,6 +113,9 @@ async function main() {
       status: 'ACTIVE',
     },
   });
+
+  console.log('Seeding risk zones...');
+  await seedRiskZones(prisma, adminUser.id);
 
   console.log('✅ Seeding complete!');
 }

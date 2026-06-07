@@ -9,7 +9,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
-import { IncidentDetail } from '@atlasguard/shared';
+import { GeofenceAlertPayload, IncidentDetail } from '@atlasguard/shared';
 
 @WebSocketGateway({
   namespace: '/events',
@@ -78,6 +78,12 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.server.to('operators').emit('incident.updated', incident);
     this.server.to(`tourist:${touristUserId}`).emit('incident.updated', incident);
     this.server.to(`incident:${incident.id}`).emit('incident.updated', incident);
+  }
+
+  emitGeofenceAlert(payload: GeofenceAlertPayload & { touristUserId: string }) {
+    const { touristUserId, ...alert } = payload;
+    this.server.to(`tourist:${touristUserId}`).emit('geofence.alert', alert);
+    this.server.to('operators').emit('geofence.alert', alert);
   }
 
   emitResponderAssigned(payload: {

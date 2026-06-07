@@ -3,13 +3,23 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { PrismaService } from '../prisma/prisma.service';
+import { RiskZonesService } from '../risk-zones/risk-zones.service';
+import { seedRiskZones } from '../risk-zones/seed-risk-zones';
 import * as bcrypt from 'bcryptjs';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('ADMIN')
 export class AdminController {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private riskZonesService: RiskZonesService,
+  ) {}
+
+  @Get('risk-zones')
+  async getRiskZones() {
+    return this.riskZonesService.listAllZones();
+  }
 
   @Get('users')
   async getUsers() {
@@ -116,7 +126,7 @@ export class AdminController {
     });
 
     // 4. Seed Admin Account
-    await this.prisma.user.upsert({
+    const adminUser = await this.prisma.user.upsert({
       where: { email: 'admin@demo.com' },
       update: { passwordHash: hashedPassword },
       create: {
@@ -127,6 +137,8 @@ export class AdminController {
         status: 'ACTIVE',
       },
     });
+
+    await seedRiskZones(this.prisma, adminUser.id);
 
     return { message: 'Seeding completed successfully' };
   }
