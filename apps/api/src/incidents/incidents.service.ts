@@ -162,10 +162,12 @@ export class IncidentsService {
     const latitude = dto.latitude ?? DEMO_LAT;
     const longitude = dto.longitude ?? DEMO_LNG;
 
+    const incidentType = dto.type ?? 'SOS';
+
     const risk = await this.riskScoringService.evaluate({
       latitude,
       longitude,
-      incidentType: 'SOS',
+      incidentType,
       touristId: profile.id,
     });
 
@@ -174,7 +176,7 @@ export class IncidentsService {
         data: {
           touristId: profile.id,
           tripId: activeTrip.id,
-          type: 'SOS',
+          type: incidentType,
           status: 'CREATED',
           severity: risk.severity,
           latitude,

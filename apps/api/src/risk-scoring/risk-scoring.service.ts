@@ -32,9 +32,12 @@ export class RiskScoringService {
 
     const tourist = await this.prisma.touristProfile.findUnique({
       where: { id: params.touristId },
-      select: { medicalNotes: true },
+      select: { medicalNotes: true, mobilityNeeds: true },
     });
     const hasMedicalNotes = Boolean(tourist?.medicalNotes?.trim());
+    const mobility = tourist?.mobilityNeeds?.trim() ?? '';
+    const hasMobilityNeeds =
+      mobility.length > 0 && mobility.toLowerCase() !== 'none';
 
     const responders = await this.prisma.responderProfile.findMany({
       where: {
@@ -83,6 +86,7 @@ export class RiskScoringService {
       highestZoneRisk,
       isNightTime: isNightTime(params.at ?? new Date()),
       hasMedicalNotes,
+      hasMobilityNeeds,
       nearestResponderDistanceKm,
       nearbyActiveIncidentCount,
     });

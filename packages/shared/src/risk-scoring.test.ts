@@ -26,6 +26,7 @@ describe('computeRiskScore', () => {
     highestZoneRisk: null,
     isNightTime: false,
     hasMedicalNotes: false,
+    hasMobilityNeeds: false,
     nearestResponderDistanceKm: 2,
     nearbyActiveIncidentCount: 0,
   };
@@ -50,18 +51,46 @@ describe('computeRiskScore', () => {
     expect(result.reasons.some((r) => r.includes('HIGH-risk geofence'))).toBe(true);
   });
 
-  it('stacks all current rules to the documented maximum of 90', () => {
+  it('applies MEDIUM zone rule (+15)', () => {
+    const result = computeRiskScore({ ...baseInput, highestZoneRisk: 'MEDIUM' });
+    expect(result.score).toBe(15);
+    expect(result.severity).toBe('LOW');
+    expect(result.reasons.some((r) => r.includes('MEDIUM-risk geofence'))).toBe(true);
+  });
+
+  it('prefers CRITICAL over HIGH and MEDIUM when multiple zones overlap', () => {
+    const result = computeRiskScore({ ...baseInput, highestZoneRisk: 'CRITICAL' });
+    expect(result.score).toBe(30);
+    expect(result.reasons.some((r) => r.includes('CRITICAL-risk geofence'))).toBe(true);
+    expect(result.reasons.some((r) => r.includes('HIGH-risk geofence'))).toBe(false);
+    expect(result.reasons.some((r) => r.includes('MEDIUM-risk geofence'))).toBe(false);
+  });
+
+  it('applies MEDICAL incident type rule (+20)', () => {
+    const result = computeRiskScore({ ...baseInput, incidentType: 'MEDICAL' });
+    expect(result.score).toBe(20);
+    expect(result.reasons.some((r) => r.includes('MEDICAL'))).toBe(true);
+  });
+
+  it('applies mobility needs rule (+5)', () => {
+    const result = computeRiskScore({ ...baseInput, hasMobilityNeeds: true });
+    expect(result.score).toBe(5);
+    expect(result.reasons.some((r) => r.includes('mobility assistance'))).toBe(true);
+  });
+
+  it('stacks all current rules to the documented maximum of 95', () => {
     const result = computeRiskScore({
       incidentType: 'MEDICAL',
       highestZoneRisk: 'CRITICAL',
       isNightTime: true,
       hasMedicalNotes: true,
+      hasMobilityNeeds: true,
       nearestResponderDistanceKm: 12,
       nearbyActiveIncidentCount: 5,
     });
     expect(result.score).toBe(MAX_ACCUMULATED_RULE_SCORE);
     expect(result.severity).toBe('CRITICAL');
-    expect(result.reasons.length).toBe(6);
+    expect(result.reasons.length).toBe(7);
   });
 
   it('caps scores at RISK_SCORE_CAP via capRiskScore', () => {

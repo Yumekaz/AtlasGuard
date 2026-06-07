@@ -118,7 +118,7 @@ export default function AdminDashboard() {
           <div>
             <h3 style={{ fontSize: '1.2rem', marginBottom: '0.35rem' }}>Demo Scenario Control</h3>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: 0 }}>
-              Seeds accounts, clears open incidents, sets demo medical notes, and returns the high-risk playbook.
+              One-click demo: seeds accounts, clears open incidents, sets medical/mobility profile, auto-triggers MEDICAL SOS at Remote North, and acknowledges for analytics.
             </p>
           </div>
           <button
@@ -142,6 +142,19 @@ export default function AdminDashboard() {
             <p style={{ marginTop: '0.75rem', fontSize: '0.85rem' }}>
               High-risk coords: {demoResult.playbook.highRiskLocation.lat}, {demoResult.playbook.highRiskLocation.lng}
             </p>
+            {demoResult.playbook.autoTriggered && demoResult.playbook.demoIncidentId && (
+              <p style={{ marginTop: '0.5rem', fontSize: '0.85rem' }}>
+                <strong>Auto-created incident:</strong>{' '}
+                <code style={{ background: 'rgba(255,255,255,0.05)', padding: '0.15rem 0.4rem', borderRadius: '4px' }}>
+                  {demoResult.playbook.demoIncidentId}
+                </code>
+                {demoResult.playbook.expectedRiskScore != null && (
+                  <span style={{ marginLeft: '0.5rem', color: 'var(--text-secondary)' }}>
+                    — risk {demoResult.playbook.expectedRiskScore}/100 ({demoResult.playbook.expectedSeverity})
+                  </span>
+                )}
+              </p>
+            )}
           </div>
         )}
       </div>

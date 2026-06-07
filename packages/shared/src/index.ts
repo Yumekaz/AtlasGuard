@@ -389,6 +389,11 @@ export interface DemoPlaybook {
   steps: string[];
   highRiskLocation: (typeof DEMO_LOCATIONS)['remoteNorth'];
   suggestedSosPayload: { latitude: number; longitude: number; description?: string };
+  demoIncidentId?: string;
+  autoTriggered?: boolean;
+  expectedRiskScore?: number;
+  expectedSeverity?: IncidentSeverity;
+  expectedReasonCount?: number;
 }
 
 export interface SimulateDemoResponse {

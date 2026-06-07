@@ -8,6 +8,11 @@ export const DEMO_PASSWORD = 'password123';
 export const DEMO_MEDICAL_NOTES =
   'Severe asthma — carries rescue inhaler. High altitude sensitivity.';
 
+export const DEMO_MOBILITY_NEEDS = 'Limited mobility — knee injury';
+
+/** Realistic operator acknowledge delay shown on dashboard analytics (minutes). */
+export const DEMO_ACKNOWLEDGE_DELAY_MINUTES = 2.5;
+
 let demoSimLock: Promise<void> = Promise.resolve();
 
 export async function withDemoSimLock<T>(fn: () => Promise<T>): Promise<T> {
@@ -71,7 +76,7 @@ export async function seedDemoAccounts(prisma: PrismaClient) {
     });
   }
 
-  await prisma.user.upsert({
+  const operatorUser = await prisma.user.upsert({
     where: { email: 'operator@demo.com' },
     update: { passwordHash: hashedPassword },
     create: {
@@ -122,7 +127,7 @@ export async function seedDemoAccounts(prisma: PrismaClient) {
 
   await seedRiskZones(prisma, adminUser.id);
 
-  return { touristProfile, adminUser, responderUser };
+  return { touristProfile, adminUser, responderUser, operatorUser };
 }
 
 export async function cancelOpenIncidents(
@@ -179,7 +184,10 @@ export async function prepareDemoScenario(
 
     await tx.touristProfile.update({
       where: { id: touristProfileId },
-      data: { medicalNotes: DEMO_MEDICAL_NOTES },
+      data: {
+        medicalNotes: DEMO_MEDICAL_NOTES,
+        mobilityNeeds: DEMO_MOBILITY_NEEDS,
+      },
     });
 
     await tx.responderProfile.updateMany({
@@ -192,4 +200,56 @@ export async function prepareDemoScenario(
 
     return cancelledCount;
   });
+}
+
+/**
+ * Backdates incident and audit events so dashboard averageResponseTimeMinutes
+ * reflects a realistic ~2–3 minute operator acknowledge after simulate-demo.
+ */
+export async function applyDemoAcknowledgeTiming(
+  prisma: PrismaClient,
+  eventsService: IncidentEventsService,
+  incidentId: string,
+  responseMinutes = DEMO_ACKNOWLEDGE_DELAY_MINUTES,
+) {
+  const events = await prisma.incidentEvent.findMany({
+    where: { incidentId },
+    orderBy: { createdAt: 'asc' },
+  });
+  if (events.length === 0) return;
+
+  const sosCreatedAt = new Date(
+    Date.now() - (responseMinutes + 0.5) * 60 * 1000,
+  );
+
+  await prisma.incident.update({
+    where: { id: incidentId },
+    data: { createdAt: sosCreatedAt, updatedAt: new Date() },
+  });
+
+  let previousHash = 'GENESIS';
+  for (const event of events) {
+    const createdAt =
+      event.eventType === 'SOS_TRIGGERED'
+        ? sosCreatedAt
+        : event.eventType === 'ACKNOWLEDGED'
+          ? new Date(sosCreatedAt.getTime() + responseMinutes * 60 * 1000)
+          : event.createdAt;
+
+    const metadataStr = event.metadata ?? '{}';
+    const currentHash = eventsService.computeHash(
+      event.incidentId,
+      event.actorId,
+      event.eventType,
+      metadataStr,
+      createdAt,
+      previousHash,
+    );
+
+    await prisma.incidentEvent.update({
+      where: { id: event.id },
+      data: { createdAt, previousHash, currentHash },
+    });
+    previousHash = currentHash;
+  }
 }

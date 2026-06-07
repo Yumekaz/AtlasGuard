@@ -1,5 +1,14 @@
 import { Type } from 'class-transformer';
-import { IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsIn, IsNumber, IsOptional, IsString } from 'class-validator';
+
+const INCIDENT_TYPES = [
+  'SOS',
+  'GEOFENCE_BREACH',
+  'MEDICAL',
+  'LOST',
+  'HARASSMENT',
+  'OTHER',
+] as const;
 
 export class TriggerSosDto {
   @IsOptional()
@@ -15,4 +24,8 @@ export class TriggerSosDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @IsOptional()
+  @IsIn(INCIDENT_TYPES)
+  type?: (typeof INCIDENT_TYPES)[number];
 }

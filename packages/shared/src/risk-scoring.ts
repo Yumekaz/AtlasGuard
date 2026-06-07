@@ -11,14 +11,25 @@ export interface RiskScoreInput {
   highestZoneRisk: RiskLevel | null;
   isNightTime: boolean;
   hasMedicalNotes: boolean;
+  hasMobilityNeeds: boolean;
   nearestResponderDistanceKm: number | null;
   nearbyActiveIncidentCount: number;
 }
 
 export const RISK_SCORE_CAP = 100;
 
-/** Sum of all scoring rules when every rule applies (current Bible §17.3 rules). */
-export const MAX_ACCUMULATED_RULE_SCORE = 90;
+/**
+ * Sum of all scoring rules when every rule applies (Bible §17.2 weights):
+ * - CRITICAL zone +30 (mutually exclusive with HIGH +25 / MEDIUM +15)
+ * - Night hours +10
+ * - MEDICAL incident type +20
+ * - Medical notes on profile +10
+ * - Mobility needs +5 (non-empty and not "None")
+ * - Nearest responder >5 km +10
+ * - Nearby active incidents >3 +10
+ * CRITICAL-path maximum: 30+10+20+10+5+10+10 = 95
+ */
+export const MAX_ACCUMULATED_RULE_SCORE = 95;
 
 export function capRiskScore(score: number): number {
   return Math.min(score, RISK_SCORE_CAP);
@@ -35,12 +46,15 @@ export function computeRiskScore(input: RiskScoreInput): RiskScoreExplanation {
   let score = 0;
   const reasons: string[] = [];
 
-  if (input.highestZoneRisk === 'HIGH') {
-    score += 25;
-    reasons.push('Incident location is in a HIGH-risk geofence zone (+25)');
-  } else if (input.highestZoneRisk === 'CRITICAL') {
+  if (input.highestZoneRisk === 'CRITICAL') {
     score += 30;
     reasons.push('Incident location is in a CRITICAL-risk geofence zone (+30)');
+  } else if (input.highestZoneRisk === 'HIGH') {
+    score += 25;
+    reasons.push('Incident location is in a HIGH-risk geofence zone (+25)');
+  } else if (input.highestZoneRisk === 'MEDIUM') {
+    score += 15;
+    reasons.push('Incident location is in a MEDIUM-risk geofence zone (+15)');
   }
 
   if (input.isNightTime) {
@@ -56,6 +70,11 @@ export function computeRiskScore(input: RiskScoreInput): RiskScoreExplanation {
   if (input.hasMedicalNotes) {
     score += 10;
     reasons.push('Tourist profile includes medical notes (+10)');
+  }
+
+  if (input.hasMobilityNeeds) {
+    score += 5;
+    reasons.push('Tourist profile reports mobility assistance needs (+5)');
   }
 
   if (
