@@ -52,3 +52,7 @@ playwright/.cache/
 
 # Local dev terminal session logs
 terminals/
+
+# AI implement/review session artifacts (never commit)
+.grok-impl-summary-*.md
+.grok-review-*.md
