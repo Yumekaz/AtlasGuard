@@ -5,9 +5,11 @@ import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '../../../../../hooks/useAuth';
 import { apiRequest } from '../../../../../lib/api';
 import { useIncidentSocket } from '../../../../../hooks/useIncidentSocket';
-import { IncidentDetail } from '@atlasguard/shared';
+import { EvidenceFile, IncidentDetail } from '@atlasguard/shared';
 import { IncidentStepper } from '../../../../../components/IncidentStepper';
 import { StatusBadge, SeverityBadge } from '../../../../../components/StatusBadge';
+import { AuditTimeline } from '../../../../../components/AuditTimeline';
+import { EvidenceUpload } from '../../../../../components/EvidenceUpload';
 import Link from 'next/link';
 
 export default function TouristIncidentPage() {
@@ -20,11 +22,16 @@ export default function TouristIncidentPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
+  const [evidence, setEvidence] = useState<EvidenceFile[]>([]);
 
   const loadIncident = useCallback(async () => {
     try {
-      const data = await apiRequest<IncidentDetail>(`/incidents/${incidentId}/status`, 'GET');
+      const [data, evidenceList] = await Promise.all([
+        apiRequest<IncidentDetail>(`/incidents/${incidentId}/status`, 'GET'),
+        apiRequest<EvidenceFile[]>(`/incidents/${incidentId}/evidence`, 'GET'),
+      ]);
       setIncident(data);
+      setEvidence(evidenceList);
       setError(null);
     } catch (err: any) {
       setError(err.message || 'Failed to load incident');
@@ -119,6 +126,21 @@ export default function TouristIncidentPage() {
             <strong>You are safe.</strong> This incident has been resolved by the response team.
           </div>
         )}
+      </div>
+
+      <div className="glass metric-card" style={{ padding: '1.5rem', marginBottom: '1.5rem' }}>
+        <AuditTimeline incidentId={incidentId} events={incident.events} />
+      </div>
+
+      <div className="glass metric-card" style={{ padding: '1.5rem', marginBottom: '1.5rem' }}>
+        <EvidenceUpload
+          incidentId={incidentId}
+          evidence={evidence}
+          onUploaded={(file) => {
+            setEvidence((prev) => [file, ...prev]);
+            loadIncident();
+          }}
+        />
       </div>
 
       <Link href="/dashboard/tourist" className="btn btn-secondary" style={{ width: 'auto' }}>

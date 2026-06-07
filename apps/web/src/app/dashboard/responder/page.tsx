@@ -4,8 +4,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../../hooks/useAuth';
 import { apiRequest } from '../../../lib/api';
 import { useIncidentSocket } from '../../../hooks/useIncidentSocket';
-import { IncidentDetail, IncidentSummary } from '@atlasguard/shared';
+import { EvidenceFile, IncidentDetail, IncidentSummary } from '@atlasguard/shared';
 import { StatusBadge } from '../../../components/StatusBadge';
+import { EvidenceUpload } from '../../../components/EvidenceUpload';
 
 export default function ResponderDashboard() {
   const { user, loading } = useAuth(['RESPONDER', 'ADMIN']);
@@ -14,11 +15,19 @@ export default function ResponderDashboard() {
   const [loadingData, setLoadingData] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [evidenceMap, setEvidenceMap] = useState<Record<string, EvidenceFile[]>>({});
 
   const loadAssignments = useCallback(async () => {
     try {
       const data = await apiRequest<IncidentSummary[]>('/responder/assignments', 'GET');
       setAssignments(data);
+      const evidenceEntries = await Promise.all(
+        data.map(async (a) => {
+          const files = await apiRequest<EvidenceFile[]>(`/incidents/${a.id}/evidence`, 'GET').catch(() => []);
+          return [a.id, files] as const;
+        }),
+      );
+      setEvidenceMap(Object.fromEntries(evidenceEntries));
     } catch (err: any) {
       setFeedback({ type: 'error', message: err.message });
     } finally {
@@ -151,6 +160,19 @@ export default function ResponderDashboard() {
                   Resolve Case
                 </button>
               </div>
+            </div>
+
+            <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1.5rem', marginTop: '1.5rem' }}>
+              <EvidenceUpload
+                incidentId={assignment.id}
+                evidence={evidenceMap[assignment.id] ?? []}
+                onUploaded={(file) => {
+                  setEvidenceMap((prev) => ({
+                    ...prev,
+                    [assignment.id]: [file, ...(prev[assignment.id] ?? [])],
+                  }));
+                }}
+              />
             </div>
           </div>
         ))

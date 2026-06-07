@@ -5,6 +5,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 import { RiskZonesService } from '../risk-zones/risk-zones.service';
 import { seedRiskZones } from '../risk-zones/seed-risk-zones';
+import { AuditService } from '../audit/audit.service';
 import * as bcrypt from 'bcryptjs';
 
 @Controller('admin')
@@ -14,7 +15,13 @@ export class AdminController {
   constructor(
     private prisma: PrismaService,
     private riskZonesService: RiskZonesService,
+    private auditService: AuditService,
   ) {}
+
+  @Get('audit')
+  async getAuditFeed() {
+    return this.auditService.getAuditFeed();
+  }
 
   @Get('risk-zones')
   async getRiskZones() {

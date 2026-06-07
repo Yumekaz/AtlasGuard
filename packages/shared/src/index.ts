@@ -117,6 +117,7 @@ export interface IncidentEvent {
   id: string;
   incidentId: string;
   actorId: string;
+  actorName?: string;
   eventType: IncidentEventType;
   metadata?: string;
   previousHash: string;
@@ -156,6 +157,17 @@ export interface IncidentSummary {
   updatedAt: string;
 }
 
+export interface EvidenceFile {
+  id: string;
+  incidentId: string;
+  uploadedById: string;
+  uploadedByName?: string;
+  fileUrl: string;
+  fileType: string;
+  description?: string;
+  createdAt: string;
+}
+
 export interface IncidentDetail extends Incident {
   touristName: string;
   touristPhone?: string;
@@ -165,6 +177,7 @@ export interface IncidentDetail extends Incident {
   assignedResponderName?: string;
   assignedResponderUnit?: string;
   events: IncidentEvent[];
+  evidenceFiles?: EvidenceFile[];
 }
 
 export interface ResponderSummary {
@@ -273,6 +286,68 @@ export const RISK_LEVEL_ORDER: Record<RiskLevel, number> = {
   MEDIUM: 2,
   HIGH: 3,
   CRITICAL: 4,
+};
+
+// ----------------------------------------------------
+// Audit, Notifications & Evidence (Phase 5)
+// ----------------------------------------------------
+
+export interface AuditIntegrityResult {
+  incidentId: string;
+  verified: boolean;
+  totalEvents: number;
+  brokenAtEventId?: string;
+  message: string;
+}
+
+export interface AuditEventFeedItem {
+  id: string;
+  incidentId: string;
+  incidentType: IncidentType;
+  incidentStatus: IncidentStatus;
+  touristName: string;
+  actorId: string;
+  actorName: string;
+  eventType: IncidentEventType;
+  previousHash: string;
+  currentHash: string;
+  createdAt: string;
+}
+
+export interface AuditIncidentSummary {
+  id: string;
+  type: IncidentType;
+  status: IncidentStatus;
+  touristName: string;
+  eventCount: number;
+  lastEventAt: string;
+}
+
+export type NotificationChannel = 'IN_APP' | 'EMAIL' | 'SMS' | 'PUSH';
+export type NotificationStatus = 'PENDING' | 'SENT' | 'FAILED' | 'MOCKED';
+
+export interface NotificationRecord {
+  id: string;
+  userId: string;
+  userName?: string;
+  incidentId?: string;
+  channel: NotificationChannel;
+  status: NotificationStatus;
+  payload: string;
+  attempts: number;
+  createdAt: string;
+  sentAt?: string;
+}
+
+export const INCIDENT_EVENT_LABELS: Record<IncidentEventType, string> = {
+  SOS_TRIGGERED: 'SOS Triggered',
+  ACKNOWLEDGED: 'Acknowledged',
+  ASSIGNED: 'Responder Assigned',
+  DISPATCHED: 'Dispatched',
+  REACHED: 'Responder Reached',
+  RESOLVED: 'Resolved',
+  CANCELLED: 'Cancelled',
+  NOTE_ADDED: 'Note / Evidence Added',
 };
 
 export const DEMO_LOCATIONS = {

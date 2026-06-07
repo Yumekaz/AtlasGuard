@@ -15,6 +15,7 @@ import { IncidentStateService } from './incident-state.service';
 import { IncidentEventsService } from './incident-events.service';
 import { TriggerSosDto } from './dto/trigger-sos.dto';
 import { EventsGateway } from '../events/events.gateway';
+import { NotificationsService } from '../notifications/notifications.service';
 
 const DEMO_LAT = 27.3314;
 const DEMO_LNG = 88.6138;
@@ -27,6 +28,7 @@ export class IncidentsService {
     private eventsService: IncidentEventsService,
     private eventsGateway: EventsGateway,
     private stateMachine: IncidentStateService,
+    private notificationsService: NotificationsService,
   ) {}
 
   private async getTouristProfileForUser(userId: string) {
@@ -69,11 +71,22 @@ export class IncidentsService {
         id: e.id,
         incidentId: e.incidentId,
         actorId: e.actorId,
+        actorName: e.actor?.name,
         eventType: e.eventType,
         metadata: e.metadata ?? undefined,
         previousHash: e.previousHash,
         currentHash: e.currentHash,
         createdAt: e.createdAt.toISOString(),
+      })),
+      evidenceFiles: (incident.evidenceFiles ?? []).map((f: any) => ({
+        id: f.id,
+        incidentId: f.incidentId,
+        uploadedById: f.uploadedById,
+        uploadedByName: f.uploadedBy?.name,
+        fileUrl: f.fileUrl,
+        fileType: f.fileType,
+        description: f.description ?? undefined,
+        createdAt: f.createdAt.toISOString(),
       })),
     };
   }
@@ -109,7 +122,14 @@ export class IncidentsService {
           responder: { include: { user: true } },
         },
       },
-      events: { orderBy: { createdAt: 'asc' as const } },
+      events: {
+        orderBy: { createdAt: 'asc' as const },
+        include: { actor: true },
+      },
+      evidenceFiles: {
+        orderBy: { createdAt: 'desc' as const },
+        include: { uploadedBy: true },
+      },
     };
   }
 
@@ -175,6 +195,12 @@ export class IncidentsService {
     const detail = this.mapIncidentDetail(incident);
     this.eventsGateway.emitIncidentCreated(detail);
     this.eventsGateway.emitIncidentUpdated(detail, profile.userId);
+    void this.notificationsService.notifyIncidentCreated(detail.id, {
+      type: detail.type,
+      status: detail.status,
+      touristName: detail.touristName,
+      safetyId: detail.safetyId,
+    });
     return detail;
   }
 
@@ -354,6 +380,16 @@ export class IncidentsService {
       assignment: detail,
     });
     this.eventsGateway.emitIncidentUpdated(detail, incident.tourist.userId);
+    void this.notificationsService.notifyResponderAssigned(responder.userId, incidentId, {
+      responderName: responder.user.name,
+      unitName: responder.unitName,
+      touristName: detail.touristName,
+      status: detail.status,
+    });
+    void this.notificationsService.notifyIncidentUpdated(incident.tourist.userId, incidentId, {
+      status: detail.status,
+      assignedResponderName: detail.assignedResponderName,
+    });
     return detail;
   }
 
@@ -433,6 +469,11 @@ export class IncidentsService {
 
     const detail = this.mapIncidentDetail(updated);
     this.eventsGateway.emitIncidentUpdated(detail, incident.tourist.userId);
+    void this.notificationsService.notifyIncidentUpdated(incident.tourist.userId, incidentId, {
+      status: detail.status,
+      fromStatus,
+      toStatus,
+    });
     return detail;
   }
 

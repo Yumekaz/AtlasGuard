@@ -3,6 +3,7 @@ import { GeofenceCheckResult } from '@atlasguard/shared';
 import { RiskZonesService } from '../risk-zones/risk-zones.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventsGateway } from '../events/events.gateway';
+import { NotificationsService } from '../notifications/notifications.service';
 import {
   buildWarningMessage,
   findMatchingZones,
@@ -15,6 +16,7 @@ export class GeofenceService {
     private riskZonesService: RiskZonesService,
     private prisma: PrismaService,
     private eventsGateway: EventsGateway,
+    private notificationsService: NotificationsService,
   ) {}
 
   async checkGeofence(
@@ -61,6 +63,11 @@ export class GeofenceService {
         longitude,
         touristName: profile.user.name,
         touristUserId: userId,
+      });
+      void this.notificationsService.notifyGeofenceAlert(userId, {
+        zoneName: primaryZone.name,
+        riskLevel: primaryZone.riskLevel,
+        message,
       });
     }
 

@@ -30,3 +30,22 @@ export async function apiRequest<T>(
 
   return response.json() as Promise<T>;
 }
+
+export async function apiUpload<T>(endpoint: string, formData: FormData): Promise<T> {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    method: 'POST',
+    headers,
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || `Upload failed with status ${response.status}`);
+  }
+
+  return response.json() as Promise<T>;
+}

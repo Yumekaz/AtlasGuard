@@ -1,10 +1,22 @@
+import { config } from 'dotenv';
+import { resolve } from 'path';
+
+config({ path: resolve(process.cwd(), '.env') });
+
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
+import { NestExpressApplication } from '@nestjs/platform-express';
+import { join } from 'path';
+import { bootstrapRedis } from './redis.bootstrap';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
-  app.enableCors(); // Essential for cross-port Next.js -> NestJS communication
+  const redisUrl = await bootstrapRedis();
+  console.log(`Redis connected via ${redisUrl}`);
+
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  app.enableCors();
+  app.useStaticAssets(join(process.cwd(), 'uploads'), { prefix: '/uploads/' });
   
   // Enable class-validator globally
   app.useGlobalPipes(new ValidationPipe({

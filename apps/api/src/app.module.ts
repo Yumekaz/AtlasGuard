@@ -11,6 +11,8 @@ import { ResponderModule } from './responder/responder.module';
 import { EventsModule } from './events/events.module';
 import { GeofenceModule } from './geofence/geofence.module';
 import { RiskZonesModule } from './risk-zones/risk-zones.module';
+import { AuditModule } from './audit/audit.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -23,6 +25,8 @@ import { RiskZonesModule } from './risk-zones/risk-zones.module';
     ResponderModule,
     GeofenceModule,
     RiskZonesModule,
+    AuditModule,
+    NotificationsModule,
   ],
   controllers: [AppController, AdminController],
   providers: [AppService],

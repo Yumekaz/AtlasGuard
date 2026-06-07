@@ -15,6 +15,9 @@ out/
 # NestJS build output
 dist/
 
+# Uploaded evidence files
+apps/api/uploads/
+
 # Local databases
 *.db
 *.db-journal
