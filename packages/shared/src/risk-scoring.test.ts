@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   capRiskScore,
   computeRiskScore,
+  hasMobilityNeedsFromProfile,
   MAX_ACCUMULATED_RULE_SCORE,
   RISK_SCORE_CAP,
   scoreToSeverity,
@@ -72,6 +73,12 @@ describe('computeRiskScore', () => {
     expect(result.reasons.some((r) => r.includes('MEDICAL'))).toBe(true);
   });
 
+  it('applies medical notes rule (+10)', () => {
+    const result = computeRiskScore({ ...baseInput, hasMedicalNotes: true });
+    expect(result.score).toBe(10);
+    expect(result.reasons.some((r) => r.includes('medical notes'))).toBe(true);
+  });
+
   it('applies mobility needs rule (+5)', () => {
     const result = computeRiskScore({ ...baseInput, hasMobilityNeeds: true });
     expect(result.score).toBe(5);
@@ -137,5 +144,20 @@ describe('computeRiskScore', () => {
     });
     expect(result.score).toBe(10);
     expect(result.reasons.some((r) => r.includes('active incidents within'))).toBe(true);
+  });
+});
+
+describe('hasMobilityNeedsFromProfile', () => {
+  it('returns false for empty or "None" sentinel values', () => {
+    expect(hasMobilityNeedsFromProfile(undefined)).toBe(false);
+    expect(hasMobilityNeedsFromProfile(null)).toBe(false);
+    expect(hasMobilityNeedsFromProfile('')).toBe(false);
+    expect(hasMobilityNeedsFromProfile('None')).toBe(false);
+    expect(hasMobilityNeedsFromProfile('none')).toBe(false);
+    expect(hasMobilityNeedsFromProfile('  None  ')).toBe(false);
+  });
+
+  it('returns true for non-empty mobility needs', () => {
+    expect(hasMobilityNeedsFromProfile('Limited mobility — knee injury')).toBe(true);
   });
 });

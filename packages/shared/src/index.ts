@@ -372,6 +372,7 @@ export {
   scoreToSeverity,
   computeRiskScore,
   capRiskScore,
+  hasMobilityNeedsFromProfile,
   RISK_SCORE_CAP,
   MAX_ACCUMULATED_RULE_SCORE,
 } from './risk-scoring';
@@ -388,7 +389,12 @@ export interface DemoPlaybook {
   title: string;
   steps: string[];
   highRiskLocation: (typeof DEMO_LOCATIONS)['remoteNorth'];
-  suggestedSosPayload: { latitude: number; longitude: number; description?: string };
+  suggestedSosPayload: {
+    latitude: number;
+    longitude: number;
+    description?: string;
+    type?: IncidentType;
+  };
   demoIncidentId?: string;
   autoTriggered?: boolean;
   expectedRiskScore?: number;

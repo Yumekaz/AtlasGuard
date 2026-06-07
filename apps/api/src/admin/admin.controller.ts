@@ -115,6 +115,7 @@ export class AdminController {
             latitude: DEMO_LOCATIONS.remoteNorth.lat,
             longitude: DEMO_LOCATIONS.remoteNorth.lng,
             description: 'Demo high-risk SOS from Remote North Route',
+            type: 'MEDICAL',
           },
           demoIncidentId: demoIncident.id,
           autoTriggered: true,

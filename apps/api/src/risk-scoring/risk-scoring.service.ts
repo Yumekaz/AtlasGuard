@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import {
   computeRiskScore,
+  hasMobilityNeedsFromProfile,
   IncidentType,
   RiskScoreExplanation,
 } from '@atlasguard/shared';
@@ -35,9 +36,7 @@ export class RiskScoringService {
       select: { medicalNotes: true, mobilityNeeds: true },
     });
     const hasMedicalNotes = Boolean(tourist?.medicalNotes?.trim());
-    const mobility = tourist?.mobilityNeeds?.trim() ?? '';
-    const hasMobilityNeeds =
-      mobility.length > 0 && mobility.toLowerCase() !== 'none';
+    const hasMobilityNeeds = hasMobilityNeedsFromProfile(tourist?.mobilityNeeds);
 
     const responders = await this.prisma.responderProfile.findMany({
       where: {

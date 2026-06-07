@@ -35,6 +35,12 @@ export function capRiskScore(score: number): number {
   return Math.min(score, RISK_SCORE_CAP);
 }
 
+/** True when mobility needs are set and not the sentinel "None" value. */
+export function hasMobilityNeedsFromProfile(mobilityNeeds?: string | null): boolean {
+  const mobility = mobilityNeeds?.trim() ?? '';
+  return mobility.length > 0 && mobility.toLowerCase() !== 'none';
+}
+
 export function scoreToSeverity(score: number): IncidentSeverity {
   if (score <= 30) return 'LOW';
   if (score <= 55) return 'MEDIUM';

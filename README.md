@@ -58,7 +58,11 @@ curl -X POST http://127.0.0.1:3001/admin/simulate-demo \
   -H "Authorization: Bearer <admin-token>"
 ```
 
-## Architecture
+## Bible §27 — Project Documentation
+
+Canonical project documentation per Bible §27: architecture, roles, schema, security, roadmap, limitations, and screenshots.
+
+### Architecture
 
 ```mermaid
 flowchart LR
@@ -95,7 +99,7 @@ flowchart LR
 | Jobs | BullMQ + Redis | Async notifications (mocked delivery in demo) |
 | Storage | SQLite | Demo-friendly embedded database |
 
-## Core Roles
+### Core Roles
 
 | Role | Primary capabilities |
 |------|---------------------|
@@ -104,7 +108,7 @@ flowchart LR
 | **Responder** | View assigned incidents, update status (dispatched → reached → resolved) |
 | **Admin** | User overview, risk zone management, audit feed, one-click demo simulation |
 
-## Database Schema Overview
+### Database Schema Overview
 
 SQLite via Prisma (`apps/api/prisma/schema.prisma`):
 
@@ -122,7 +126,7 @@ SQLite via Prisma (`apps/api/prisma/schema.prisma`):
 | `notifications` | In-app / mocked outbound notification log |
 | `audit_logs` | Cross-cutting admin audit feed |
 
-## Privacy & Security
+### Privacy & Security
 
 - **Demo disclaimer:** This repository is a demonstration prototype. Do not deploy with default passwords or SQLite in production without hardening.
 - **RBAC:** JWT authentication with role guards on every protected route (`@Roles` decorator).
@@ -130,7 +134,7 @@ SQLite via Prisma (`apps/api/prisma/schema.prisma`):
 - **Data minimization:** Tourist medical and mobility fields are used only for risk scoring context — not shared outside operator/responder views.
 - **Transport:** Use HTTPS and secure cookie/token storage in any real deployment.
 
-## Phase Roadmap
+### Phase Roadmap
 
 | Phase | Focus | Status |
 |-------|-------|--------|
@@ -151,7 +155,7 @@ SQLite via Prisma (`apps/api/prisma/schema.prisma`):
 
 See `docs/demo-script.md` for the 5-minute walkthrough.
 
-## Known Limitations
+### Known Limitations
 
 - SQLite single-writer — E2E tests run with `workers: 1` to avoid lock contention
 - Notification delivery is mocked (records created, no real SMS/email)
@@ -160,7 +164,7 @@ See `docs/demo-script.md` for the 5-minute walkthrough.
 - Redis is required for BullMQ but optional for core REST flows in minimal dev setups
 - Screenshot assets are documented in `docs/screenshots/README.md` but not generated in CI
 
-## Screenshots
+### Screenshots
 
 Capture UI screenshots locally following `docs/screenshots/README.md`. Suggested set:
 
