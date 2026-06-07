@@ -3,7 +3,7 @@ import { Worker, Job } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventsGateway } from '../events/events.gateway';
 import { NOTIFICATION_QUEUE, NotificationJobData } from './notifications.constants';
-import { getRedisConnection } from './redis.connection';
+import { getRedisConnection } from '../redis.connection';
 
 @Injectable()
 export class NotificationsProcessor implements OnModuleInit, OnModuleDestroy {
@@ -21,7 +21,12 @@ export class NotificationsProcessor implements OnModuleInit, OnModuleDestroy {
     this.worker = new Worker(
       NOTIFICATION_QUEUE,
       async (job: Job<NotificationJobData>) => this.processJob(job),
-      { connection },
+      {
+        connection,
+        settings: {
+          backoffStrategy: (attemptsMade: number) => Math.min(1000 * 2 ** attemptsMade, 30_000),
+        },
+      },
     );
 
     this.worker.on('failed', (job, err) => {

@@ -7,7 +7,7 @@ import {
   NotificationJobData,
   NotificationTemplate,
 } from './notifications.constants';
-import { getRedisConnection } from './redis.connection';
+import { getRedisConnection } from '../redis.connection';
 
 @Injectable()
 export class NotificationsService implements OnModuleInit, OnModuleDestroy {
@@ -27,11 +27,59 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async enqueue(data: NotificationJobData) {
-    if (!this.queue) return;
+    if (!this.queue) {
+      throw new Error('Notification queue is not initialized');
+    }
     await this.queue.add(data.template, data, {
       removeOnComplete: 100,
       removeOnFail: 50,
+      attempts: 3,
+      backoff: { type: 'exponential', delay: 1000 },
     });
+  }
+
+  private async safeNotify(
+    label: string,
+    task: () => Promise<void>,
+    failureMeta?: { userId?: string; incidentId?: string },
+  ): Promise<void> {
+    try {
+      await task();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(`Notification enqueue failed (${label}): ${message}`);
+      if (failureMeta?.userId) {
+        await this.recordEnqueueFailure(
+          failureMeta.userId,
+          failureMeta.incidentId,
+          label,
+          message,
+        );
+      }
+    }
+  }
+
+  private async recordEnqueueFailure(
+    userId: string,
+    incidentId: string | undefined,
+    template: string,
+    error: string,
+  ) {
+    try {
+      await this.prisma.notification.create({
+        data: {
+          userId,
+          incidentId,
+          channel: 'IN_APP',
+          status: 'FAILED',
+          payload: JSON.stringify({ template, error, stage: 'enqueue' }),
+          attempts: 0,
+        },
+      });
+    } catch (recordErr) {
+      const message = recordErr instanceof Error ? recordErr.message : String(recordErr);
+      this.logger.error(`Could not record notification failure: ${message}`);
+    }
   }
 
   async notifyUser(
@@ -67,7 +115,11 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
   }
 
   async notifyIncidentCreated(incidentId: string, payload: Record<string, unknown>) {
-    await this.notifyOperators('incident.created', payload, incidentId);
+    await this.safeNotify(
+      'incident.created',
+      () => this.notifyOperators('incident.created', payload, incidentId),
+      { incidentId },
+    );
   }
 
   async notifyResponderAssigned(
@@ -75,7 +127,18 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
     incidentId: string,
     payload: Record<string, unknown>,
   ) {
-    await this.notifyUser(responderUserId, ['IN_APP', 'SMS'], 'responder.assigned', payload, incidentId);
+    await this.safeNotify(
+      'responder.assigned',
+      () =>
+        this.notifyUser(
+          responderUserId,
+          ['IN_APP', 'SMS'],
+          'responder.assigned',
+          payload,
+          incidentId,
+        ),
+      { userId: responderUserId, incidentId },
+    );
   }
 
   async notifyIncidentUpdated(
@@ -83,14 +146,30 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
     incidentId: string,
     payload: Record<string, unknown>,
   ) {
-    await this.notifyUser(touristUserId, ['IN_APP', 'SMS'], 'incident.updated', payload, incidentId);
+    await this.safeNotify(
+      'incident.updated',
+      () =>
+        this.notifyUser(
+          touristUserId,
+          ['IN_APP', 'SMS'],
+          'incident.updated',
+          payload,
+          incidentId,
+        ),
+      { userId: touristUserId, incidentId },
+    );
   }
 
   async notifyGeofenceAlert(
     touristUserId: string,
     payload: Record<string, unknown>,
   ) {
-    await this.notifyUser(touristUserId, ['IN_APP', 'SMS'], 'geofence.alert', payload);
+    await this.safeNotify(
+      'geofence.alert',
+      () =>
+        this.notifyUser(touristUserId, ['IN_APP', 'SMS'], 'geofence.alert', payload),
+      { userId: touristUserId },
+    );
   }
 
   async getMyNotifications(userId: string): Promise<NotificationRecord[]> {

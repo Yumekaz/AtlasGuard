@@ -13,6 +13,7 @@ import { GeofenceModule } from './geofence/geofence.module';
 import { RiskZonesModule } from './risk-zones/risk-zones.module';
 import { AuditModule } from './audit/audit.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { NotificationsModule } from './notifications/notifications.module';
     RiskZonesModule,
     AuditModule,
     NotificationsModule,
+    HealthModule,
   ],
   controllers: [AppController, AdminController],
   providers: [AppService],

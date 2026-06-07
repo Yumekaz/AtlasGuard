@@ -9,9 +9,11 @@ import { ValidationPipe } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import { bootstrapRedis } from './redis.bootstrap';
+import { loadAppEnv } from './config/env.config';
 
 async function bootstrap() {
-  const redisUrl = await bootstrapRedis();
+  const env = loadAppEnv();
+  const redisUrl = await bootstrapRedis(env.isProduction);
   console.log(`Redis connected via ${redisUrl}`);
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule);

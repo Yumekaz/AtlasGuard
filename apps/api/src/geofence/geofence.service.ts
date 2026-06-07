@@ -64,7 +64,7 @@ export class GeofenceService {
         touristName: profile.user.name,
         touristUserId: userId,
       });
-      void this.notificationsService.notifyGeofenceAlert(userId, {
+      this.notificationsService.notifyGeofenceAlert(userId, {
         zoneName: primaryZone.name,
         riskLevel: primaryZone.riskLevel,
         message,

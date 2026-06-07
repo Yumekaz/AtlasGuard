@@ -15,7 +15,10 @@
     "dev:shared": "npm run dev -w @atlasguard/shared",
     "dev:api": "npm run dev -w @atlasguard/api",
     "dev:web": "npm run dev -w @atlasguard/web",
-    "install:all": "npm install"
+    "install:all": "npm install",
+    "infra:up": "docker compose up -d",
+    "infra:down": "docker compose down",
+    "infra:logs": "docker compose logs -f redis"
   },
   "devDependencies": {
     "typescript": "^5.3.3"

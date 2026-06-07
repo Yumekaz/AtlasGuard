@@ -195,7 +195,7 @@ export class IncidentsService {
     const detail = this.mapIncidentDetail(incident);
     this.eventsGateway.emitIncidentCreated(detail);
     this.eventsGateway.emitIncidentUpdated(detail, profile.userId);
-    void this.notificationsService.notifyIncidentCreated(detail.id, {
+    this.notificationsService.notifyIncidentCreated(detail.id, {
       type: detail.type,
       status: detail.status,
       touristName: detail.touristName,
@@ -380,13 +380,13 @@ export class IncidentsService {
       assignment: detail,
     });
     this.eventsGateway.emitIncidentUpdated(detail, incident.tourist.userId);
-    void this.notificationsService.notifyResponderAssigned(responder.userId, incidentId, {
+    this.notificationsService.notifyResponderAssigned(responder.userId, incidentId, {
       responderName: responder.user.name,
       unitName: responder.unitName,
       touristName: detail.touristName,
       status: detail.status,
     });
-    void this.notificationsService.notifyIncidentUpdated(incident.tourist.userId, incidentId, {
+    this.notificationsService.notifyIncidentUpdated(incident.tourist.userId, incidentId, {
       status: detail.status,
       assignedResponderName: detail.assignedResponderName,
     });
@@ -469,7 +469,7 @@ export class IncidentsService {
 
     const detail = this.mapIncidentDetail(updated);
     this.eventsGateway.emitIncidentUpdated(detail, incident.tourist.userId);
-    void this.notificationsService.notifyIncidentUpdated(incident.tourist.userId, incidentId, {
+    this.notificationsService.notifyIncidentUpdated(incident.tourist.userId, incidentId, {
       status: detail.status,
       fromStatus,
       toStatus,
