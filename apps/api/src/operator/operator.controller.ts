@@ -52,6 +52,11 @@ export class OperatorController {
   async getMapData() {
     return this.operatorService.getMapData();
   }
+
+  @Get('dashboard/summary')
+  async getDashboardSummary() {
+    return this.operatorService.getDashboardSummary();
+  }
 }
 
 @Controller('operator')

@@ -18,7 +18,8 @@
     "install:all": "npm install",
     "infra:up": "docker compose up -d",
     "infra:down": "docker compose down",
-    "infra:logs": "docker compose logs -f redis"
+    "infra:logs": "docker compose logs -f redis",
+    "test:shared": "npm run test -w @atlasguard/shared"
   },
   "devDependencies": {
     "typescript": "^5.3.3"

@@ -5,7 +5,8 @@ import { useAuth } from '../../../hooks/useAuth';
 import { apiRequest } from '../../../lib/api';
 import { useIncidentSocket } from '../../../hooks/useIncidentSocket';
 import { EvidenceFile, IncidentDetail, IncidentSummary } from '@atlasguard/shared';
-import { StatusBadge } from '../../../components/StatusBadge';
+import { StatusBadge, SeverityBadge } from '../../../components/StatusBadge';
+import { RiskExplanationPanel } from '../../../components/RiskExplanationPanel';
 import { EvidenceUpload } from '../../../components/EvidenceUpload';
 
 export default function ResponderDashboard() {
@@ -125,9 +126,16 @@ export default function ResponderDashboard() {
               </div>
               <div>
                 <h3 style={{ fontSize: '1.1rem', color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>Incident Details</h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.95rem' }}>
-                  <div>Severity: <strong style={{ color: 'var(--accent-red)' }}>{assignment.severity}</strong></div>
-                  <div>Risk Score: <strong>{assignment.riskScore}/100</strong></div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.95rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span>Severity:</span>
+                    <SeverityBadge severity={assignment.severity} />
+                  </div>
+                  <RiskExplanationPanel
+                    riskScore={assignment.riskScore}
+                    severity={assignment.severity}
+                    compact
+                  />
                 </div>
               </div>
             </div>

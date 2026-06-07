@@ -3,9 +3,10 @@ import { OperatorController, OperatorCompatController } from './operator.control
 import { OperatorService } from './operator.service';
 import { IncidentsModule } from '../incidents/incidents.module';
 import { RiskZonesModule } from '../risk-zones/risk-zones.module';
+import { PrismaModule } from '../prisma/prisma.module';
 
 @Module({
-  imports: [IncidentsModule, RiskZonesModule],
+  imports: [IncidentsModule, RiskZonesModule, PrismaModule],
   controllers: [OperatorController, OperatorCompatController],
   providers: [OperatorService],
 })

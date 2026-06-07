@@ -4,9 +4,13 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 import { RiskZonesService } from '../risk-zones/risk-zones.service';
-import { seedRiskZones } from '../risk-zones/seed-risk-zones';
 import { AuditService } from '../audit/audit.service';
-import * as bcrypt from 'bcryptjs';
+import { DEMO_LOCATIONS, SimulateDemoResponse } from '@atlasguard/shared';
+import {
+  cancelOpenIncidents,
+  DEMO_MEDICAL_NOTES,
+  seedDemoAccounts,
+} from './seed-demo.helper';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -46,107 +50,46 @@ export class AdminController {
 
   @Post('seed')
   async seed() {
-    const plainPassword = 'password123';
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(plainPassword, salt);
-
-    // 1. Seed Tourist Account
-    const touristUser = await this.prisma.user.upsert({
-      where: { email: 'tourist@demo.com' },
-      update: { passwordHash: hashedPassword },
-      create: {
-        name: 'Demo Tourist',
-        email: 'tourist@demo.com',
-        passwordHash: hashedPassword,
-        role: 'TOURIST',
-        status: 'ACTIVE',
-      },
-    });
-
-    const touristProfile = await this.prisma.touristProfile.upsert({
-      where: { userId: touristUser.id },
-      update: {},
-      create: {
-        userId: touristUser.id,
-        phone: '+15550199',
-        emergencyContactName: 'Jane Doe',
-        emergencyContactPhone: '+15550200',
-        medicalNotes: 'No major allergies.',
-        mobilityNeeds: 'None',
-        languagePreference: 'en',
-      },
-    });
-
-    const existingTrip = await this.prisma.trip.findFirst({
-      where: { touristId: touristProfile.id, status: 'ACTIVE' },
-    });
-    if (!existingTrip) {
-      await this.prisma.trip.create({
-        data: {
-          touristId: touristProfile.id,
-          destinationName: 'Gangtok, Sikkim',
-          startDate: new Date(),
-          endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-          safetyId: 'AG-GAN-DEMO',
-          status: 'ACTIVE',
-        },
-      });
-    }
-
-    // 2. Seed Operator Account
-    await this.prisma.user.upsert({
-      where: { email: 'operator@demo.com' },
-      update: { passwordHash: hashedPassword },
-      create: {
-        name: 'Demo Operator',
-        email: 'operator@demo.com',
-        passwordHash: hashedPassword,
-        role: 'OPERATOR',
-        status: 'ACTIVE',
-      },
-    });
-
-    // 3. Seed Responder Account
-    const responderUser = await this.prisma.user.upsert({
-      where: { email: 'responder@demo.com' },
-      update: { passwordHash: hashedPassword },
-      create: {
-        name: 'Demo Responder',
-        email: 'responder@demo.com',
-        passwordHash: hashedPassword,
-        role: 'RESPONDER',
-        status: 'ACTIVE',
-      },
-    });
-
-    await this.prisma.responderProfile.upsert({
-      where: { userId: responderUser.id },
-      update: {},
-      create: {
-        userId: responderUser.id,
-        phone: '+15550300',
-        unitName: 'Gangtok Safety Unit Alpha',
-        availabilityStatus: 'AVAILABLE',
-        lastLatitude: 27.3314,
-        lastLongitude: 88.6138,
-      },
-    });
-
-    // 4. Seed Admin Account
-    const adminUser = await this.prisma.user.upsert({
-      where: { email: 'admin@demo.com' },
-      update: { passwordHash: hashedPassword },
-      create: {
-        name: 'Demo Admin',
-        email: 'admin@demo.com',
-        passwordHash: hashedPassword,
-        role: 'ADMIN',
-        status: 'ACTIVE',
-      },
-    });
-
-    await seedRiskZones(this.prisma, adminUser.id);
-
+    await seedDemoAccounts(this.prisma);
     return { message: 'Seeding completed successfully' };
+  }
+
+  @Post('simulate-demo')
+  async simulateDemo(): Promise<SimulateDemoResponse> {
+    const { touristProfile } = await seedDemoAccounts(this.prisma);
+    const cancelledCount = await cancelOpenIncidents(this.prisma);
+
+    await this.prisma.touristProfile.update({
+      where: { id: touristProfile.id },
+      data: { medicalNotes: DEMO_MEDICAL_NOTES },
+    });
+
+    await this.prisma.responderProfile.updateMany({
+      data: {
+        lastLatitude: 27.31,
+        lastLongitude: 88.58,
+      },
+    });
+
+    return {
+      message: `Demo scenario prepared (${cancelledCount} open incident(s) cleared)`,
+      playbook: {
+        title: 'AtlasGuard 5-Minute Risk Scoring Demo',
+        steps: [
+          'Log in as tourist@demo.com and open the Safety Map.',
+          `Move to Remote North Route (CRITICAL zone) at ${DEMO_LOCATIONS.remoteNorth.lat}, ${DEMO_LOCATIONS.remoteNorth.lng}.`,
+          'Trigger SOS — observe elevated risk score and CRITICAL/HIGH severity.',
+          'Log in as operator@demo.com — review dashboard summary and risk explanation panel.',
+          'Acknowledge, assign responder, and walk through dispatch workflow.',
+          'Show audit chain integrity and notification records.',
+        ],
+        highRiskLocation: DEMO_LOCATIONS.remoteNorth,
+        suggestedSosPayload: {
+          latitude: DEMO_LOCATIONS.remoteNorth.lat,
+          longitude: DEMO_LOCATIONS.remoteNorth.lng,
+          description: 'Demo high-risk SOS from Remote North Route',
+        },
+      },
+    };
   }
 }

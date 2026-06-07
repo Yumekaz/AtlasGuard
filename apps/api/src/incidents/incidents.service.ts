@@ -16,6 +16,7 @@ import { IncidentEventsService } from './incident-events.service';
 import { TriggerSosDto } from './dto/trigger-sos.dto';
 import { EventsGateway } from '../events/events.gateway';
 import { NotificationsService } from '../notifications/notifications.service';
+import { RiskScoringService } from '../risk-scoring/risk-scoring.service';
 
 const DEMO_LAT = 27.3314;
 const DEMO_LNG = 88.6138;
@@ -29,6 +30,7 @@ export class IncidentsService {
     private eventsGateway: EventsGateway,
     private stateMachine: IncidentStateService,
     private notificationsService: NotificationsService,
+    private riskScoringService: RiskScoringService,
   ) {}
 
   private async getTouristProfileForUser(userId: string) {
@@ -159,6 +161,13 @@ export class IncidentsService {
     const latitude = dto.latitude ?? DEMO_LAT;
     const longitude = dto.longitude ?? DEMO_LNG;
 
+    const risk = await this.riskScoringService.evaluate({
+      latitude,
+      longitude,
+      incidentType: 'SOS',
+      touristId: profile.id,
+    });
+
     const incident = await this.prisma.$transaction(async (tx) => {
       const created = await tx.incident.create({
         data: {
@@ -166,10 +175,11 @@ export class IncidentsService {
           tripId: activeTrip.id,
           type: 'SOS',
           status: 'CREATED',
-          severity: 'MEDIUM',
+          severity: risk.severity,
           latitude,
           longitude,
-          riskScore: 0,
+          riskScore: risk.score,
+          riskExplanation: JSON.stringify(risk),
           description: dto.description,
         },
       });

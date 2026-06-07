@@ -7,9 +7,10 @@ import { EvidenceService } from './evidence.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { EventsModule } from '../events/events.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { RiskScoringModule } from '../risk-scoring/risk-scoring.module';
 
 @Module({
-  imports: [PrismaModule, EventsModule, NotificationsModule],
+  imports: [PrismaModule, EventsModule, NotificationsModule, RiskScoringModule],
   controllers: [IncidentsController],
   providers: [
     IncidentsService,

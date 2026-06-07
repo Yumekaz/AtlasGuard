@@ -358,3 +358,34 @@ export const DEMO_LOCATIONS = {
   defaultStart: { lat: 27.325, lng: 88.600, label: 'Outside all zones' },
 } as const;
 
+// ----------------------------------------------------
+// Risk Scoring & Analytics (Phase 6)
+// ----------------------------------------------------
+
+export type {
+  RiskScoreExplanation,
+  RiskScoreInput,
+} from './risk-scoring';
+
+export { scoreToSeverity, computeRiskScore } from './risk-scoring';
+
+export interface DashboardSummary {
+  totalActive: number;
+  activeBySeverity: Record<IncidentSeverity, number>;
+  averageResponseTimeMinutes: number | null;
+  criticalCount: number;
+  resolvedToday: number;
+}
+
+export interface DemoPlaybook {
+  title: string;
+  steps: string[];
+  highRiskLocation: (typeof DEMO_LOCATIONS)['remoteNorth'];
+  suggestedSosPayload: { latitude: number; longitude: number; description?: string };
+}
+
+export interface SimulateDemoResponse {
+  message: string;
+  playbook: DemoPlaybook;
+}
+

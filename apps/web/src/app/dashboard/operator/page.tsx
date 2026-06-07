@@ -4,8 +4,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../../hooks/useAuth';
 import { apiRequest } from '../../../lib/api';
 import { useIncidentSocket } from '../../../hooks/useIncidentSocket';
-import { GeofenceAlertPayload, IncidentDetail, IncidentSummary, OpsMapData, ResponderSummary } from '@atlasguard/shared';
+import { DashboardSummary, GeofenceAlertPayload, IncidentDetail, IncidentSummary, OpsMapData, ResponderSummary } from '@atlasguard/shared';
 import { StatusBadge, SeverityBadge } from '../../../components/StatusBadge';
+import { RiskExplanationPanel, getRiskScoreColor } from '../../../components/RiskExplanationPanel';
 import AtlasMap, { MapLayers } from '../../../components/AtlasMap';
 
 function timeAgo(dateStr: string): string {
@@ -35,6 +36,8 @@ export default function OperatorDashboard() {
     tourist: false,
   });
   const [geofenceAlert, setGeofenceAlert] = useState<GeofenceAlertPayload | null>(null);
+  const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [selectedIncident, setSelectedIncident] = useState<IncidentDetail | null>(null);
 
   const loadIncidents = useCallback(async () => {
     try {
@@ -56,9 +59,21 @@ export default function OperatorDashboard() {
     }
   }, []);
 
+  const loadSummary = useCallback(async () => {
+    try {
+      const data = await apiRequest<DashboardSummary>('/ops/dashboard/summary', 'GET');
+      setSummary(data);
+    } catch {
+      // non-fatal
+    }
+  }, []);
+
   const loadMapData = useCallback(async () => {
     try {
-      const data = await apiRequest<OpsMapData>('/ops/map', 'GET');
+      const [data] = await Promise.all([
+        apiRequest<OpsMapData>('/ops/map', 'GET'),
+        loadSummary(),
+      ]);
       setMapData(data);
       setIncidents(data.incidents);
       setResponders(data.responders);
@@ -67,7 +82,7 @@ export default function OperatorDashboard() {
     } finally {
       setLoadingData(false);
     }
-  }, []);
+  }, [loadSummary]);
 
   useEffect(() => {
     if (!loading && user) {
@@ -114,12 +129,23 @@ export default function OperatorDashboard() {
     setMapLayers((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
+  const loadIncidentDetail = async (id: string) => {
+    try {
+      const detail = await apiRequest<IncidentDetail>(`/ops/incidents/${id}`, 'GET');
+      setSelectedIncident(detail);
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
   const handleAcknowledge = async (id: string) => {
     setActionLoading(id);
     setError(null);
     try {
       const updated = await apiRequest<IncidentDetail>(`/ops/incidents/${id}/acknowledge`, 'POST');
       upsertIncident(updated);
+      setSelectedIncident(updated);
+      loadSummary();
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -157,40 +183,66 @@ export default function OperatorDashboard() {
       <div className="grid-cols-4">
         <div className="glass metric-card">
           <div className="metric-header">
-            <span className="metric-title">Active SOS Cases</span>
-            <span style={{ color: 'var(--accent-red)', fontSize: '1.25rem' }}>●</span>
-          </div>
-          <div className="metric-value" style={{ color: 'var(--accent-red)' }}>{sosCount}</div>
-          <div className="metric-desc">Triage queue active</div>
-        </div>
-
-        <div className="glass metric-card">
-          <div className="metric-header">
             <span className="metric-title">Total Active</span>
             <span style={{ color: 'var(--accent-orange)', fontSize: '1.25rem' }}>●</span>
           </div>
-          <div className="metric-value" style={{ color: 'var(--accent-orange)' }}>{incidents.length}</div>
+          <div className="metric-value" style={{ color: 'var(--accent-orange)' }}>
+            {summary?.totalActive ?? incidents.length}
+          </div>
           <div className="metric-desc">Open incidents</div>
         </div>
 
         <div className="glass metric-card">
           <div className="metric-header">
-            <span className="metric-title">Responders Online</span>
-            <span style={{ color: 'var(--accent-green)', fontSize: '1.25rem' }}>●</span>
+            <span className="metric-title">Critical Cases</span>
+            <span style={{ color: 'var(--accent-red)', fontSize: '1.25rem' }}>●</span>
           </div>
-          <div className="metric-value" style={{ color: 'var(--accent-green)' }}>{responders.length}</div>
-          <div className="metric-desc">{availableResponders} Available</div>
+          <div className="metric-value" style={{ color: 'var(--accent-red)' }}>
+            {summary?.criticalCount ?? incidents.filter((i) => i.severity === 'CRITICAL').length}
+          </div>
+          <div className="metric-desc">Severity CRITICAL</div>
         </div>
 
         <div className="glass metric-card">
           <div className="metric-header">
-            <span className="metric-title">Live Feed</span>
+            <span className="metric-title">Avg Response</span>
             <span style={{ color: 'var(--primary)', fontSize: '1.25rem' }}>⏱</span>
           </div>
-          <div className="metric-value" style={{ fontSize: '1.2rem' }}>WebSocket</div>
-          <div className="metric-desc">Real-time updates</div>
+          <div className="metric-value" style={{ fontSize: '1.4rem' }}>
+            {summary?.averageResponseTimeMinutes != null
+              ? `${summary.averageResponseTimeMinutes}m`
+              : '—'}
+          </div>
+          <div className="metric-desc">CREATED → ACKNOWLEDGED</div>
+        </div>
+
+        <div className="glass metric-card">
+          <div className="metric-header">
+            <span className="metric-title">Resolved Today</span>
+            <span style={{ color: 'var(--accent-green)', fontSize: '1.25rem' }}>✓</span>
+          </div>
+          <div className="metric-value" style={{ color: 'var(--accent-green)' }}>
+            {summary?.resolvedToday ?? 0}
+          </div>
+          <div className="metric-desc">{sosCount} SOS active · {availableResponders} responders free</div>
         </div>
       </div>
+
+      {summary && (
+        <div className="grid-cols-4" style={{ marginBottom: '1.5rem' }}>
+          {(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] as const).map((level) => (
+            <div key={level} className="glass metric-card" style={{ padding: '1rem 1.25rem' }}>
+              <div className="metric-header">
+                <span className="metric-title">{level}</span>
+                <SeverityBadge severity={level} />
+              </div>
+              <div className="metric-value" style={{ fontSize: '1.5rem' }}>
+                {summary.activeBySeverity[level]}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {error && (
         <div className="alert alert-danger" style={{ marginBottom: '1rem' }}>
@@ -262,7 +314,16 @@ export default function OperatorDashboard() {
               </thead>
               <tbody>
                 {incidents.map((incident) => (
-                  <tr key={incident.id} style={{ borderBottom: '1px solid var(--border-color)', height: '60px' }}>
+                  <tr
+                    key={incident.id}
+                    onClick={() => loadIncidentDetail(incident.id)}
+                    style={{
+                      borderBottom: '1px solid var(--border-color)',
+                      height: '60px',
+                      cursor: 'pointer',
+                      background: selectedIncident?.id === incident.id ? 'rgba(99,102,241,0.08)' : undefined,
+                    }}
+                  >
                     <td style={{ padding: '0.75rem 1rem' }}>
                       <strong style={{ display: 'block', color: '#ffffff' }}>{incident.type}</strong>
                       <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
@@ -274,7 +335,7 @@ export default function OperatorDashboard() {
                       {incident.destinationName || `${incident.latitude.toFixed(4)}, ${incident.longitude.toFixed(4)}`}
                     </td>
                     <td style={{ padding: '0.75rem 1rem' }}>
-                      <code style={{ background: 'rgba(239,68,68,0.1)', color: 'var(--accent-red)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontWeight: 600 }}>
+                      <code style={{ background: 'rgba(255,255,255,0.05)', color: getRiskScoreColor(incident.riskScore), padding: '0.2rem 0.5rem', borderRadius: '4px', fontWeight: 600 }}>
                         {incident.riskScore}/100
                       </code>
                     </td>
@@ -323,6 +384,19 @@ export default function OperatorDashboard() {
           </div>
         )}
       </div>
+
+      {selectedIncident && (
+        <div className="glass" style={{ padding: '1.5rem', marginBottom: '2rem' }}>
+          <h3 style={{ fontSize: '1.15rem', marginBottom: '1rem' }}>
+            Risk Analysis — {selectedIncident.touristName}
+          </h3>
+          <RiskExplanationPanel
+            riskScore={selectedIncident.riskScore}
+            severity={selectedIncident.severity}
+            riskExplanation={selectedIncident.riskExplanation}
+          />
+        </div>
+      )}
 
       {assignModal && (
         <div style={{

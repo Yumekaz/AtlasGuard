@@ -10,6 +10,7 @@ import { IncidentStepper } from '../../../../../components/IncidentStepper';
 import { StatusBadge, SeverityBadge } from '../../../../../components/StatusBadge';
 import { AuditTimeline } from '../../../../../components/AuditTimeline';
 import { EvidenceUpload } from '../../../../../components/EvidenceUpload';
+import { RiskExplanationPanel } from '../../../../../components/RiskExplanationPanel';
 import Link from 'next/link';
 
 export default function TouristIncidentPage() {
@@ -102,6 +103,18 @@ export default function TouristIncidentPage() {
         </div>
 
         <IncidentStepper incident={incident} />
+
+        <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border-color)' }}>
+          <h3 style={{ fontSize: '1rem', marginBottom: '0.75rem', color: 'var(--text-secondary)' }}>
+            Your Risk Assessment
+          </h3>
+          <RiskExplanationPanel
+            riskScore={incident.riskScore}
+            severity={incident.severity}
+            riskExplanation={incident.riskExplanation}
+            compact
+          />
+        </div>
 
         {incident.assignedResponderName && (
           <div className="alert alert-info" style={{ marginTop: '1.5rem' }}>
