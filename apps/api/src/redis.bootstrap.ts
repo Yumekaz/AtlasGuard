@@ -20,7 +20,7 @@ export async function bootstrapRedis(isProduction: boolean): Promise<string> {
   if (explicitUrl) {
     candidates.push(explicitUrl);
   } else if (!isProduction) {
-    candidates.push('redis://127.0.0.1:6379');
+    candidates.push('redis://127.0.0.1:6380', 'redis://127.0.0.1:6379');
   }
 
   for (const url of candidates) {
@@ -51,7 +51,7 @@ export async function bootstrapRedis(isProduction: boolean): Promise<string> {
     [
       'Redis 5+ is required but not reachable.',
       'Fix options:',
-      '  1. npm run infra:up   (Docker Redis 7 on port 6379)',
+      '  1. npm run infra:up   (Docker Redis 7 on port 6380)',
       '  2. Set REDIS_URL to your Redis 5+ instance',
       '  3. Set REDIS_FALLBACK_MEMORY=true for embedded dev-only Redis (not for production)',
       'Note: Legacy Windows Redis 3.x is incompatible with BullMQ.',

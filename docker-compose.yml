@@ -3,7 +3,7 @@ services:
     image: redis:7-alpine
     container_name: atlasguard-redis
     ports:
-      - "6379:6379"
+      - "6380:6379"
     volumes:
       - atlasguard_redis_data:/data
     command: redis-server --appendonly yes

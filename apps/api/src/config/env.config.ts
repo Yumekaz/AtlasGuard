@@ -18,7 +18,7 @@ export function loadAppEnv(): AppEnv {
   return {
     nodeEnv,
     port: Number(process.env.PORT ?? 3001),
-    redisUrl: redisUrl ?? 'redis://127.0.0.1:6379',
+    redisUrl: redisUrl ?? 'redis://127.0.0.1:6380',
     jwtSecret: process.env.JWT_SECRET ?? 'fallback_secret_key_change_me_in_production',
     isProduction,
   };
